@@ -93,6 +93,16 @@ data:
   manifest_path: /path/to/manifest.csv
 ```
 
+If RoBERTa and wav2vec2 are already downloaded on your server, point the config to the local model directories:
+
+```yaml
+model:
+  text_model_name: /path/to/roberta-base
+  audio_model_name: /path/to/wav2vec2-base
+```
+
+The local RoBERTa directory should contain files such as `config.json`, tokenizer files, and model weights. The local wav2vec2 directory should contain `config.json`, `preprocessor_config.json`, and model weights. The code uses HuggingFace `from_pretrained`, so local directories work the same way as online model names.
+
 The default model freezes RoBERTa and wav2vec2, which is safer for small datasets and limited GPU memory. To fine-tune the backbones, set:
 
 ```yaml

@@ -15,6 +15,10 @@ data:
   num_workers: 2
 
 model:
+  # These can be HuggingFace model names or local directories on your server.
+  # Example local paths:
+  # text_model_name: /path/to/roberta-base
+  # audio_model_name: /path/to/wav2vec2-base
   text_model_name: roberta-base
   audio_model_name: facebook/wav2vec2-base
   hidden_dim: 256
