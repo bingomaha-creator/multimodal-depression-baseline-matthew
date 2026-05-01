@@ -53,7 +53,7 @@ def example_rows() -> list[dict]:
 
 def normalize_split(value: str) -> str:
     value = value.strip().lower()
-    if value in {"val", "validation"}:
+    if value in {"val", "valid", "validation"}:
         return "dev"
     return value
 
@@ -107,6 +107,7 @@ def build_manifest(args: argparse.Namespace) -> list[dict]:
         "train": "train",
         "dev": "dev",
         "val": "dev",
+        "valid": "dev",
         "validation": "dev",
         "test": "test",
     }

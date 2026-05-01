@@ -82,7 +82,7 @@ python scripts/make_manifest_example.py \
   --output data/edaic_manifest.csv
 ```
 
-By default, the script reads `folder_name` as the subject folder id and `PHQ_Score` as the PHQ score. It accepts `train`, `dev`, `val`, `validation`, and `test` split folders. `val` and `validation` are normalized to `dev` in the generated manifest. If `label_all.csv` also has a `split` column, the script checks that it matches the actual folder split.
+By default, the script reads `folder_name` as the subject folder id and `PHQ_Score` as the PHQ score. It accepts `train`, `dev`, `val`, `valid`, `validation`, and `test` split folders. `val`, `valid`, and `validation` are normalized to `dev` in the generated manifest. If `label_all.csv` also has a `split` column, the script checks that it matches the actual folder split.
 
 ## Configure
 
