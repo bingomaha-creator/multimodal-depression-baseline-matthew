@@ -1,0 +1,7 @@
+torch
+torchaudio
+transformers
+pandas
+scikit-learn
+tqdm
+pyyaml

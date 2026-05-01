@@ -1,0 +1,32 @@
+seed: 42
+
+data:
+  manifest_path: data/edaic_manifest.csv
+  text_column: transcript_path
+  audio_column: audio_path
+  id_column: participant_id
+  phq_column: phq_score
+  split_column: split
+  transcript_text_column: Text
+  positive_threshold: 10
+  sample_rate: 16000
+  max_audio_length: 640000
+  max_text_length: 512
+  num_workers: 2
+
+model:
+  text_model_name: roberta-base
+  audio_model_name: facebook/wav2vec2-base
+  hidden_dim: 256
+  dropout: 0.1
+  freeze_backbones: true
+
+training:
+  batch_size: 4
+  epochs: 20
+  learning_rate: 1.0e-5
+  weight_decay: 0.0
+  device: auto
+  output_dir: outputs
+  monitor_metric: f1
+  max_train_steps:
