@@ -123,10 +123,11 @@ The script will:
 1. Load `train`, `dev`, and `test` splits.
 2. Train for the configured number of epochs.
 3. Evaluate on `dev` after each epoch.
-4. Save the best checkpoint by `dev_f1`.
-5. Load the best checkpoint at the end.
-6. Evaluate on `test`.
-7. Save metrics and test predictions.
+4. Search the best depression threshold on `dev` for F1.
+5. Save the best checkpoint by threshold-tuned `dev_f1`.
+6. Load the best checkpoint at the end.
+7. Evaluate on `test` with the best `dev` threshold.
+8. Save metrics and dev/test predictions.
 
 Default outputs:
 
@@ -134,8 +135,23 @@ Default outputs:
 outputs/checkpoints/best.pt
 outputs/metrics/dev_best_metrics.json
 outputs/metrics/test_metrics.json
+outputs/predictions/dev_predictions.csv
 outputs/predictions/test_predictions.csv
 ```
+
+For low-memory GPUs, start with:
+
+```yaml
+data:
+  max_audio_length: 80000
+  num_workers: 0
+
+training:
+  batch_size: 1
+  device: cuda
+```
+
+When `model.freeze_backbones: true`, frozen RoBERTa and wav2vec2 forwards run under `torch.no_grad()` to reduce memory. If this fits, you can try increasing `max_audio_length` to `120000` or `160000`.
 
 ## Smoke Test
 
@@ -165,3 +181,5 @@ python -m src.evaluate \
 - The first RoBERTa token representation is used as the text embedding.
 - wav2vec2 hidden states are mean-pooled with the audio attention mask.
 - Transcript CSV files are supported; by default the dataset reads and concatenates the `Text` column. Change `data.transcript_text_column` in the config if your column name differs.
+- Class weights are enabled by default with `training.use_class_weights: true`.
+- Validation searches thresholds from `0.1` to `0.9`; test uses the best validation threshold stored in the checkpoint.

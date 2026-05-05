@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
+
 import torch
 from torch import nn
 from transformers import AutoModel, Wav2Vec2Model
@@ -18,6 +20,7 @@ class MultimodalBaseline(nn.Module):
         super().__init__()
         self.text_encoder = AutoModel.from_pretrained(text_model_name)
         self.audio_encoder = Wav2Vec2Model.from_pretrained(audio_model_name)
+        self.freeze_backbones_enabled = freeze_backbones
 
         text_dim = self.text_encoder.config.hidden_size
         audio_dim = self.audio_encoder.config.hidden_size
@@ -37,6 +40,15 @@ class MultimodalBaseline(nn.Module):
             parameter.requires_grad = False
         for parameter in self.audio_encoder.parameters():
             parameter.requires_grad = False
+        self.text_encoder.eval()
+        self.audio_encoder.eval()
+
+    def train(self, mode: bool = True) -> "MultimodalBaseline":
+        super().train(mode)
+        if self.freeze_backbones_enabled:
+            self.text_encoder.eval()
+            self.audio_encoder.eval()
+        return self
 
     def forward(
         self,
@@ -45,16 +57,19 @@ class MultimodalBaseline(nn.Module):
         audio_values: torch.Tensor,
         audio_attention_mask: torch.Tensor,
     ) -> torch.Tensor:
-        text_outputs = self.text_encoder(
-            input_ids=input_ids,
-            attention_mask=text_attention_mask,
-        )
-        text_embedding = text_outputs.last_hidden_state[:, 0, :]
+        backbone_context = torch.no_grad() if self.freeze_backbones_enabled else nullcontext()
 
-        audio_outputs = self.audio_encoder(
-            input_values=audio_values,
-            attention_mask=audio_attention_mask,
-        )
+        with backbone_context:
+            text_outputs = self.text_encoder(
+                input_ids=input_ids,
+                attention_mask=text_attention_mask,
+            )
+            audio_outputs = self.audio_encoder(
+                input_values=audio_values,
+                attention_mask=audio_attention_mask,
+            )
+
+        text_embedding = text_outputs.last_hidden_state[:, 0, :]
         audio_embedding = self._masked_mean_pool(
             audio_outputs.last_hidden_state,
             self._downsample_audio_mask(audio_attention_mask, audio_outputs.last_hidden_state.shape[1]),

@@ -30,6 +30,7 @@ training:
   epochs: 20
   learning_rate: 1.0e-5
   weight_decay: 0.0
+  use_class_weights: true
   device: auto
   output_dir: outputs
   monitor_metric: f1

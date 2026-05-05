@@ -19,6 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", required=True, help="Path to YAML config.")
     parser.add_argument("--checkpoint", required=True, help="Path to checkpoint.")
     parser.add_argument("--split", default="test", choices=["train", "dev", "test"], help="Split to evaluate.")
+    parser.add_argument("--threshold", type=float, default=None, help="Override checkpoint threshold.")
     return parser.parse_args()
 
 
@@ -50,7 +51,12 @@ def main() -> None:
     checkpoint = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
 
-    metrics, predictions = evaluate(model, loader, nn.CrossEntropyLoss(), device)
+    threshold = args.threshold
+    if threshold is None:
+        threshold = float(checkpoint.get("best_threshold", 0.5))
+
+    metrics, predictions = evaluate(model, loader, nn.CrossEntropyLoss(), device, threshold=threshold)
+    metrics["best_threshold"] = threshold
     output_dir = Path(config["training"]["output_dir"])
     save_json(output_dir / "metrics" / f"{args.split}_metrics.json", metrics)
     predictions_path = output_dir / "predictions" / f"{args.split}_predictions.csv"
