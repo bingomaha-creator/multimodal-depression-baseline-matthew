@@ -236,7 +236,6 @@ def main() -> None:
 
     best_metric = -1.0
     best_metrics: Dict[str, float] = {}
-    best_threshold = 0.5
     best_path = checkpoint_dir / "best.pt"
 
     for epoch in range(1, int(config["training"]["epochs"]) + 1):
@@ -249,25 +248,13 @@ def main() -> None:
             epoch=epoch,
             max_train_steps=max_train_steps,
         )
-        dev_default_metrics, dev_predictions = evaluate(model, loaders["dev"], criterion, device)
-        dev_labels = dev_predictions["label"].to_numpy()
-        dev_probabilities = dev_predictions["prob_depressed"].to_numpy()
-        epoch_threshold, _ = find_best_threshold(dev_labels, dev_probabilities)
-        dev_metrics, dev_predictions = evaluate(
-            model,
-            loaders["dev"],
-            criterion,
-            device,
-            threshold=epoch_threshold,
-        )
+        dev_metrics, _ = evaluate(model, loaders["dev"], criterion, device, threshold=0.5)
         dev_metrics["train_loss"] = train_loss
-        dev_metrics["f1_at_0_5"] = dev_default_metrics["f1"]
-        dev_metrics["best_threshold"] = epoch_threshold
         print(
             f"epoch={epoch} train_loss={train_loss:.4f} "
             f"dev_acc={dev_metrics['acc']:.4f} dev_precision={dev_metrics['precision']:.4f} "
             f"dev_recall={dev_metrics['recall']:.4f} dev_f1={dev_metrics['f1']:.4f} "
-            f"dev_threshold={epoch_threshold:.2f} dev_f1_at_0.5={dev_default_metrics['f1']:.4f}"
+            f"dev_threshold=0.50"
         )
 
         monitor_metric = str(config["training"]["monitor_metric"])
@@ -275,15 +262,12 @@ def main() -> None:
         if current_metric > best_metric:
             best_metric = current_metric
             best_metrics = dev_metrics
-            best_threshold = epoch_threshold
-            dev_predictions.to_csv(predictions_dir / "dev_predictions.csv", index=False)
             torch.save(
                 {
                     "model_state_dict": model.state_dict(),
                     "config": config,
                     "epoch": epoch,
                     "dev_metrics": dev_metrics,
-                    "best_threshold": best_threshold,
                 },
                 best_path,
             )
@@ -292,16 +276,59 @@ def main() -> None:
 
     checkpoint = torch.load(best_path, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
-    best_threshold = float(checkpoint.get("best_threshold", best_threshold))
-    test_metrics, test_predictions = evaluate(model, loaders["test"], criterion, device, threshold=best_threshold)
-    test_metrics["best_threshold"] = best_threshold
-    save_json(metrics_dir / "test_metrics.json", test_metrics)
+
+    dev_metrics_at_0_5, dev_predictions = evaluate(model, loaders["dev"], criterion, device, threshold=0.5)
+    dev_labels = dev_predictions["label"].to_numpy()
+    dev_probabilities = dev_predictions["prob_depressed"].to_numpy()
+    dev_best_threshold, _ = find_best_threshold(dev_labels, dev_probabilities)
+    dev_metrics_best_threshold, dev_predictions_best_threshold = evaluate(
+        model,
+        loaders["dev"],
+        criterion,
+        device,
+        threshold=dev_best_threshold,
+    )
+    dev_metrics_best_threshold["dev_best_threshold"] = dev_best_threshold
+    dev_predictions.to_csv(predictions_dir / "dev_predictions.csv", index=False)
+    dev_predictions_best_threshold.to_csv(
+        predictions_dir / "dev_predictions_with_best_threshold.csv",
+        index=False,
+    )
+    save_json(metrics_dir / "dev_metrics_at_0_5.json", dev_metrics_at_0_5)
+    save_json(metrics_dir / "dev_metrics_best_threshold.json", dev_metrics_best_threshold)
+
+    checkpoint["dev_best_threshold"] = dev_best_threshold
+    torch.save(checkpoint, best_path)
+
+    test_metrics_at_0_5, test_predictions = evaluate(model, loaders["test"], criterion, device, threshold=0.5)
+    test_metrics_with_dev_threshold, test_predictions_with_dev_threshold = evaluate(
+        model,
+        loaders["test"],
+        criterion,
+        device,
+        threshold=dev_best_threshold,
+    )
+    test_metrics_with_dev_threshold["dev_best_threshold"] = dev_best_threshold
+    save_json(metrics_dir / "test_metrics_at_0_5.json", test_metrics_at_0_5)
+    save_json(metrics_dir / "test_metrics_with_dev_threshold.json", test_metrics_with_dev_threshold)
     test_predictions.to_csv(predictions_dir / "test_predictions.csv", index=False)
+    test_predictions_with_dev_threshold.to_csv(
+        predictions_dir / "test_predictions_with_dev_threshold.csv",
+        index=False,
+    )
 
     print(
-        f"test_acc={test_metrics['acc']:.4f} test_precision={test_metrics['precision']:.4f} "
-        f"test_recall={test_metrics['recall']:.4f} test_f1={test_metrics['f1']:.4f} "
-        f"test_threshold={best_threshold:.2f}"
+        f"test@0.5 acc={test_metrics_at_0_5['acc']:.4f} "
+        f"precision={test_metrics_at_0_5['precision']:.4f} "
+        f"recall={test_metrics_at_0_5['recall']:.4f} "
+        f"f1={test_metrics_at_0_5['f1']:.4f}"
+    )
+    print(
+        f"test@dev_threshold acc={test_metrics_with_dev_threshold['acc']:.4f} "
+        f"precision={test_metrics_with_dev_threshold['precision']:.4f} "
+        f"recall={test_metrics_with_dev_threshold['recall']:.4f} "
+        f"f1={test_metrics_with_dev_threshold['f1']:.4f} "
+        f"threshold={dev_best_threshold:.2f}"
     )
     print(f"best checkpoint: {best_path}")
 

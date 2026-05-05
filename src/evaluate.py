@@ -53,10 +53,10 @@ def main() -> None:
 
     threshold = args.threshold
     if threshold is None:
-        threshold = float(checkpoint.get("best_threshold", 0.5))
+        threshold = float(checkpoint.get("dev_best_threshold", checkpoint.get("best_threshold", 0.5)))
 
     metrics, predictions = evaluate(model, loader, nn.CrossEntropyLoss(), device, threshold=threshold)
-    metrics["best_threshold"] = threshold
+    metrics["threshold"] = threshold
     output_dir = Path(config["training"]["output_dir"])
     save_json(output_dir / "metrics" / f"{args.split}_metrics.json", metrics)
     predictions_path = output_dir / "predictions" / f"{args.split}_predictions.csv"
