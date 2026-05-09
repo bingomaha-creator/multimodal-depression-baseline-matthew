@@ -16,9 +16,14 @@ LABEL_MAP = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create a MODMA manifest with 18 audio/text segments per subject.")
-    parser.add_argument("--transcript-json", required=True, help="JSON file containing all subject transcripts.")
-    parser.add_argument("--label-xlsx", required=True, help="Excel file containing subject labels.")
-    parser.add_argument("--audio-root", required=True, help="Root directory containing subject audio folders.")
+    parser.add_argument("--transcript-json",
+                        default='/home/rui/24zbma/data/audio_lanzhou_2015(1)/audio_lanzhou_2015/modma_final_text.json',
+                        help="JSON file containing all subject transcripts.")
+    parser.add_argument("--label-xlsx",
+                        default='/home/rui/24zbma/data/audio_lanzhou_2015(1)/audio_lanzhou_2015/subjects_information_audio_lanzhou_2015.xlsx',
+                        help="Excel file containing subject labels.")
+    parser.add_argument("--audio-root", default='/home/rui/24zbma/data/audio_lanzhou_2015(1)/audio_lanzhou_2015',
+                        help="Root directory containing subject audio folders.")
     parser.add_argument("--output", default="data/modma_manifest.csv", help="Output manifest CSV path.")
     parser.add_argument(
         "--processed-text-dir",
