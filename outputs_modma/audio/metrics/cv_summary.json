@@ -1,0 +1,42 @@
+{
+  "folds": [
+    {
+      "fold": 1,
+      "metrics_at_0_5": {
+        "acc": 0.45454545454545453,
+        "precision": 0.45454545454545453,
+        "recall": 1.0,
+        "f1": 0.625,
+        "loss": 0.6943970123926798,
+        "threshold": 0.5,
+        "prob_min": 0.5044905543327332,
+        "prob_max": 0.5049474835395813,
+        "prob_mean": 0.5046576424078508,
+        "pred_pos_rate": 1.0
+      },
+      "metrics_with_threshold": {
+        "acc": 0.45454545454545453,
+        "precision": 0.45454545454545453,
+        "recall": 1.0,
+        "f1": 0.625,
+        "loss": 0.6943970123926798,
+        "threshold": 0.1,
+        "prob_min": 0.5044905543327332,
+        "prob_max": 0.5049474835395813,
+        "prob_mean": 0.5046576424078508,
+        "pred_pos_rate": 1.0,
+        "best_threshold": 0.1
+      }
+    }
+  ],
+  "acc_mean": 0.45454545454545453,
+  "acc_std": 0.0,
+  "precision_mean": 0.45454545454545453,
+  "precision_std": 0.0,
+  "recall_mean": 1.0,
+  "recall_std": 0.0,
+  "f1_mean": 0.625,
+  "f1_std": 0.0,
+  "loss_mean": 0.6943970123926798,
+  "loss_std": 0.0
+}

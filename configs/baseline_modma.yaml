@@ -1,8 +1,8 @@
 seed: 42
 
 data:
-  manifest_path: data/modma_manifest.csv
-  feature_cache_path: data/modma_features.pt
+  manifest_path: /home/rui/24zbma/code/multimodal-depression-baseline-matthew/scripts/data/modma_manifest.csv
+  feature_cache_path: /home/rui/24zbma/code/multimodal-depression-baseline-matthew/data/modma_features_smoke.pt
   id_column: participant_id
   label_column: label
   text_column: transcript_path
@@ -14,7 +14,7 @@ data:
   num_workers: 0
 
 model:
-  text_model_name: /home/rui/24zbma/models/chinese-roberta-base
+  text_model_name: /home/rui/24zbma/models/bert-based-chinese
   audio_model_name: /home/rui/24zbma/models/wav2vec
   hidden_dim: 256
   dropout: 0.1
