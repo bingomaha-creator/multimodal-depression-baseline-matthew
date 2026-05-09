@@ -1,0 +1,33 @@
+seed: 42
+
+data:
+  manifest_path: data/modma_manifest.csv
+  feature_cache_path: data/modma_features.pt
+  id_column: participant_id
+  label_column: label
+  text_column: transcript_path
+  audio_paths_column: audio_paths
+  sample_rate: 16000
+  max_audio_length: 80000
+  max_text_length: 512
+  num_segments: 18
+  num_workers: 0
+
+model:
+  text_model_name: /home/rui/24zbma/models/chinese-roberta-base
+  audio_model_name: /home/rui/24zbma/models/wav2vec
+  hidden_dim: 256
+  dropout: 0.1
+  modality: both
+
+training:
+  n_splits: 5
+  batch_size: 4
+  epochs: 50
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-4
+  use_class_weights: true
+  device: cuda
+  output_dir: outputs_modma
+  monitor_metric: f1
+  max_train_steps:

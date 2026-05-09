@@ -211,6 +211,38 @@ After the manifest is ready, run a very short training pass to verify model down
 python -m src.train --config configs/baseline_edaic.yaml --max-train-steps 2
 ```
 
+For MODMA, first extract frozen features:
+
+```bash
+python -m src.extract_modma_features \
+  --config configs/baseline_modma.yaml \
+  --limit 2 \
+  --output data/modma_features_smoke.pt
+```
+
+If the smoke test works, remove `--limit` and cache all features:
+
+```bash
+python -m src.extract_modma_features --config configs/baseline_modma.yaml
+```
+
+Then run one fold for two train steps:
+
+```bash
+python -m src.train_modma_cv \
+  --config configs/baseline_modma.yaml \
+  --fold-limit 1 \
+  --max-train-steps 2
+```
+
+Before the full multimodal run, check each modality separately:
+
+```bash
+python -m src.train_modma_cv --config configs/baseline_modma.yaml --modality text --fold-limit 1
+python -m src.train_modma_cv --config configs/baseline_modma.yaml --modality audio --fold-limit 1
+python -m src.train_modma_cv --config configs/baseline_modma.yaml --modality both
+```
+
 ## Optional Checkpoint Evaluation
 
 The main training flow already tests the best checkpoint. The separate evaluator is only for later checkpoint inspection:
