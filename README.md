@@ -84,6 +84,49 @@ python scripts/make_manifest_example.py \
 
 By default, the script reads `folder_name` as the subject folder id and `PHQ_Score` as the PHQ score. It accepts `train`, `dev`, `val`, `valid`, `validation`, and `test` split folders. `val`, `valid`, and `validation` are normalized to `dev` in the generated manifest. If `label_all.csv` also has a `split` column, the script checks that it matches the actual folder split.
 
+## MODMA Manifest
+
+For MODMA, one subject is one sample and the first 18 audio/text segments are required. Generate a MODMA manifest with:
+
+```bash
+python scripts/make_manifest_modma.py \
+  --transcript-json /path/to/modma_transcripts.json \
+  --label-xlsx /path/to/labels.xlsx \
+  --audio-root /path/to/MODMA/audio \
+  --output data/modma_manifest.csv \
+  --processed-text-dir data/modma_processed_texts
+```
+
+Expected inputs:
+
+- Transcript JSON: one top-level list with `subject_id`, `audio_data`, `audio_index`, and `content`.
+- Audio files: `{audio_root}/{subject_id}/01.wav` through `{audio_root}/{subject_id}/18.wav`.
+- Label xlsx: columns `subject id` and `type`, where `MDD` maps to `1` and `HC` maps to `0`.
+
+The generated manifest contains:
+
+```csv
+participant_id,label,label_name,transcript_path,audio_paths,num_segments,split
+```
+
+`audio_paths` is a JSON list string containing 18 absolute wav paths. Subjects missing any of the first 18 audio or transcript segments are skipped with a warning. The `split` value is written as `all`; five-fold training will create train/dev/test folds from this manifest later.
+
+Check the generated manifest with:
+
+```bash
+python - <<'PY'
+import json
+import pandas as pd
+
+df = pd.read_csv("data/modma_manifest.csv", dtype={"participant_id": str})
+print(df.head())
+print(df["label_name"].value_counts())
+print(df["num_segments"].value_counts())
+paths = json.loads(df.iloc[0]["audio_paths"])
+print(len(paths), paths[:2], paths[-1])
+PY
+```
+
 ## Configure
 
 Edit [configs/baseline_edaic.yaml](configs/baseline_edaic.yaml) and set:
