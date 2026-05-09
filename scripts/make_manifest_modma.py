@@ -27,17 +27,21 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--subject-column", default="subject id", help="Subject id column in the label xlsx.")
     parser.add_argument("--label-column", default="type", help="Label column in the label xlsx.")
+    parser.add_argument("--subject-id-width", type=int, default=8, help="Zero-pad numeric subject ids to this width.")
     parser.add_argument("--num-segments", type=int, default=18, help="Number of required audio/text segments.")
     parser.add_argument("--split", default="all", help="Split value written to the manifest.")
     return parser.parse_args()
 
 
-def normalize_subject_id(value: Any) -> str:
+def normalize_subject_id(value: Any, width: int = 8) -> str:
     if pd.isna(value):
         return ""
     if isinstance(value, float) and value.is_integer():
         value = int(value)
-    return str(value).strip()
+    value = str(value).strip()
+    if value.isdigit() and width > 0:
+        return value.zfill(width)
+    return value
 
 
 def normalize_audio_index(value: Any) -> str:
@@ -51,7 +55,12 @@ def normalize_audio_index(value: Any) -> str:
     return value
 
 
-def load_labels(label_xlsx: str, subject_column: str, label_column: str) -> Dict[str, Dict[str, Any]]:
+def load_labels(
+    label_xlsx: str,
+    subject_column: str,
+    label_column: str,
+    subject_id_width: int,
+) -> Dict[str, Dict[str, Any]]:
     labels_df = pd.read_excel(label_xlsx, dtype={subject_column: str})
     missing = [column for column in (subject_column, label_column) if column not in labels_df.columns]
     if missing:
@@ -59,7 +68,7 @@ def load_labels(label_xlsx: str, subject_column: str, label_column: str) -> Dict
 
     labels: Dict[str, Dict[str, Any]] = {}
     for _, row in labels_df.iterrows():
-        subject_id = normalize_subject_id(row[subject_column])
+        subject_id = normalize_subject_id(row[subject_column], subject_id_width)
         label_name = str(row[label_column]).strip().upper()
         if not subject_id:
             continue
@@ -72,7 +81,7 @@ def load_labels(label_xlsx: str, subject_column: str, label_column: str) -> Dict
     return labels
 
 
-def load_transcripts(transcript_json: str) -> Dict[str, Dict[str, str]]:
+def load_transcripts(transcript_json: str, subject_id_width: int) -> Dict[str, Dict[str, str]]:
     with open(transcript_json, "r", encoding="utf-8") as file:
         payload = json.load(file)
     if not isinstance(payload, list):
@@ -80,7 +89,7 @@ def load_transcripts(transcript_json: str) -> Dict[str, Dict[str, str]]:
 
     transcripts: Dict[str, Dict[str, str]] = {}
     for subject in payload:
-        subject_id = normalize_subject_id(subject.get("subject_id"))
+        subject_id = normalize_subject_id(subject.get("subject_id"), subject_id_width)
         audio_data = subject.get("audio_data", [])
         if not subject_id:
             continue
@@ -146,8 +155,8 @@ def collect_subject(
 
 
 def build_manifest(args: argparse.Namespace) -> Tuple[pd.DataFrame, List[Tuple[str, str]]]:
-    labels = load_labels(args.label_xlsx, args.subject_column, args.label_column)
-    transcripts = load_transcripts(args.transcript_json)
+    labels = load_labels(args.label_xlsx, args.subject_column, args.label_column, args.subject_id_width)
+    transcripts = load_transcripts(args.transcript_json, args.subject_id_width)
     audio_root = Path(args.audio_root)
     processed_text_dir = Path(args.processed_text_dir)
 
@@ -198,7 +207,7 @@ def main() -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     manifest.to_csv(output, index=False)
 
-    total_labels = len(load_labels(args.label_xlsx, args.subject_column, args.label_column))
+    total_labels = len(load_labels(args.label_xlsx, args.subject_column, args.label_column, args.subject_id_width))
     print(f"Wrote {output}")
     print_summary(manifest, skipped, total_labels)
 

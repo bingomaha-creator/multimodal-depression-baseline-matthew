@@ -93,6 +93,7 @@ python scripts/make_manifest_modma.py \
   --transcript-json /path/to/modma_transcripts.json \
   --label-xlsx /path/to/labels.xlsx \
   --audio-root /path/to/MODMA/audio \
+  --subject-id-width 8 \
   --output data/modma_manifest.csv \
   --processed-text-dir data/modma_processed_texts
 ```
@@ -102,6 +103,7 @@ Expected inputs:
 - Transcript JSON: one top-level list with `subject_id`, `audio_data`, `audio_index`, and `content`.
 - Audio files: `{audio_root}/{subject_id}/01.wav` through `{audio_root}/{subject_id}/18.wav`.
 - Label xlsx: columns `subject id` and `type`, where `MDD` maps to `1` and `HC` maps to `0`.
+- Subject ids are zero-padded to 8 digits by default, so Excel values like `2030010` become `02030010`.
 
 The generated manifest contains:
 
