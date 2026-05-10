@@ -1,0 +1,13 @@
+{
+  "acc": 1.0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1": 1.0,
+  "loss": 0.6233317653338114,
+  "threshold": 0.5,
+  "prob_min": 0.4529043436050415,
+  "prob_max": 0.5956313610076904,
+  "prob_mean": 0.5144848853349686,
+  "pred_pos_rate": 0.4,
+  "best_threshold": 0.5
+}

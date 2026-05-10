@@ -27,16 +27,128 @@
         "pred_pos_rate": 0.5454545454545454,
         "best_threshold": 0.48
       }
+    },
+    {
+      "fold": 2,
+      "metrics_at_0_5": {
+        "acc": 0.6363636363636364,
+        "precision": 0.6,
+        "recall": 0.6,
+        "f1": 0.6,
+        "loss": 0.7354328433672587,
+        "threshold": 0.5,
+        "prob_min": 0.4334354102611542,
+        "prob_max": 0.6023727655410767,
+        "prob_mean": 0.5016979629343207,
+        "pred_pos_rate": 0.45454545454545453
+      },
+      "metrics_with_threshold": {
+        "acc": 0.45454545454545453,
+        "precision": 0.45454545454545453,
+        "recall": 1.0,
+        "f1": 0.625,
+        "loss": 0.7354328433672587,
+        "threshold": 0.1,
+        "prob_min": 0.4334354102611542,
+        "prob_max": 0.6023727655410767,
+        "prob_mean": 0.5016979629343207,
+        "pred_pos_rate": 1.0,
+        "best_threshold": 0.1
+      }
+    },
+    {
+      "fold": 3,
+      "metrics_at_0_5": {
+        "acc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "loss": 0.6085751454035441,
+        "threshold": 0.5,
+        "prob_min": 0.4401848316192627,
+        "prob_max": 0.5916464328765869,
+        "prob_mean": 0.510898670554161,
+        "pred_pos_rate": 0.5
+      },
+      "metrics_with_threshold": {
+        "acc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "loss": 0.6085751454035441,
+        "threshold": 0.5,
+        "prob_min": 0.4401848316192627,
+        "prob_max": 0.5916464328765869,
+        "prob_mean": 0.510898670554161,
+        "pred_pos_rate": 0.5,
+        "best_threshold": 0.5
+      }
+    },
+    {
+      "fold": 4,
+      "metrics_at_0_5": {
+        "acc": 0.8,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8,
+        "loss": 0.5310275455315908,
+        "threshold": 0.5,
+        "prob_min": 0.27704012393951416,
+        "prob_max": 0.916675329208374,
+        "prob_mean": 0.5813417434692383,
+        "pred_pos_rate": 0.6
+      },
+      "metrics_with_threshold": {
+        "acc": 0.9,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571428571428571,
+        "loss": 0.5310275455315908,
+        "threshold": 0.7,
+        "prob_min": 0.27704012393951416,
+        "prob_max": 0.916675329208374,
+        "prob_mean": 0.5813417434692383,
+        "pred_pos_rate": 0.3,
+        "best_threshold": 0.7
+      }
+    },
+    {
+      "fold": 5,
+      "metrics_at_0_5": {
+        "acc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "loss": 0.6233317653338114,
+        "threshold": 0.5,
+        "prob_min": 0.4529043436050415,
+        "prob_max": 0.5956313610076904,
+        "prob_mean": 0.5144848853349686,
+        "pred_pos_rate": 0.4
+      },
+      "metrics_with_threshold": {
+        "acc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "loss": 0.6233317653338114,
+        "threshold": 0.5,
+        "prob_min": 0.4529043436050415,
+        "prob_max": 0.5956313610076904,
+        "prob_mean": 0.5144848853349686,
+        "pred_pos_rate": 0.4,
+        "best_threshold": 0.5
+      }
     }
   ],
-  "acc_mean": 0.7272727272727273,
-  "acc_std": 0.0,
-  "precision_mean": 0.6666666666666666,
-  "precision_std": 0.0,
-  "recall_mean": 0.8,
-  "recall_std": 0.0,
-  "f1_mean": 0.7272727272727272,
-  "f1_std": 0.0,
-  "loss_mean": 0.6573289434115092,
-  "loss_std": 0.0
+  "acc_mean": 0.8327272727272728,
+  "acc_std": 0.1460895231025503,
+  "precision_mean": 0.7866666666666666,
+  "precision_std": 0.1758787461103056,
+  "recall_mean": 0.8800000000000001,
+  "recall_std": 0.16,
+  "f1_mean": 0.8254545454545454,
+  "f1_std": 0.15623673497411517,
+  "loss_mean": 0.6311392486095428,
+  "loss_std": 0.06656651209589791
 }
