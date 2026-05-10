@@ -9,13 +9,22 @@ import pandas as pd
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create a manifest CSV for E-DAIC-style folders.")
-    parser.add_argument("--dataset-root", help="Root containing train/dev/test folders.")
-    parser.add_argument("--labels-csv", help="CSV containing participant_id and PHQ score columns.")
+    parser.add_argument(
+        "--dataset-root",
+        default="/home/rui/24zbma/data/E_DAIC/output",
+        help="Root containing train/dev/test folders.",
+    )
+    parser.add_argument(
+        "--labels-csv",
+        default="/home/rui/24zbma/data/E_DAIC/detailed_lables.csv",
+        help="CSV containing E-DAIC labels.",
+    )
     parser.add_argument("--output", default="data/edaic_manifest.csv", help="Output CSV path.")
-    parser.add_argument("--id-column", default="folder_name", help="Subject folder/id column in labels CSV.")
-    parser.add_argument("--phq-column", default="PHQ_Score", help="PHQ score column in labels CSV.")
+    parser.add_argument("--id-column", default="Participant", help="Subject id column in labels CSV.")
+    parser.add_argument("--phq-column", default="Depression_severity", help="Depression severity column in labels CSV.")
+    parser.add_argument("--label-column", default="Depression_label", help="Binary depression label column in labels CSV.")
     parser.add_argument("--split-column", default="split", help="Optional split column in labels CSV.")
-    parser.add_argument("--participant-column", default="Participant_ID", help="Optional numeric participant id column.")
+    parser.add_argument("--participant-column", default="Participant", help="Optional numeric participant id column.")
     parser.add_argument("--audio-suffix", default="_AUDIO.wav", help="Audio filename suffix inside each subject folder.")
     parser.add_argument(
         "--transcript-suffix",
@@ -32,6 +41,7 @@ def example_rows() -> list[dict]:
             "audio_path": "/path/to/audio/300.wav",
             "transcript_path": "/path/to/transcripts/300.txt",
             "phq_score": 4,
+            "label": 0,
             "split": "train",
         },
         {
@@ -39,6 +49,7 @@ def example_rows() -> list[dict]:
             "audio_path": "/path/to/audio/301.wav",
             "transcript_path": "/path/to/transcripts/301.txt",
             "phq_score": 13,
+            "label": 1,
             "split": "dev",
         },
         {
@@ -46,6 +57,7 @@ def example_rows() -> list[dict]:
             "audio_path": "/path/to/audio/302.wav",
             "transcript_path": "/path/to/transcripts/302.txt",
             "phq_score": 9,
+            "label": 0,
             "split": "test",
         },
     ]
@@ -62,11 +74,16 @@ def load_labels(
     labels_csv: str,
     id_column: str,
     phq_column: str,
+    label_column: str,
     split_column: str,
     participant_column: str,
 ) -> Dict[str, dict]:
     labels_df = pd.read_csv(labels_csv)
-    missing = [column for column in (id_column, phq_column) if column not in labels_df.columns]
+    missing = [
+        column
+        for column in (id_column, phq_column, label_column)
+        if column not in labels_df.columns
+    ]
     if missing:
         raise ValueError(f"Labels CSV is missing required columns: {missing}")
 
@@ -75,11 +92,24 @@ def load_labels(
     return {
         str(row[id_column]): {
             "phq_score": float(row[phq_column]),
+            "label": int(row[label_column]),
             "split": normalize_split(str(row[split_column])) if has_split else None,
             "participant_id": str(row[participant_column]) if has_participant else str(row[id_column]),
         }
         for _, row in labels_df.iterrows()
     }
+
+
+def find_label_info(labels: Dict[str, dict], folder_id: str) -> tuple[str, dict]:
+    if folder_id in labels:
+        return folder_id, labels[folder_id]
+
+    if folder_id.endswith("_P"):
+        participant_id = folder_id[:-2]
+        if participant_id in labels:
+            return participant_id, labels[participant_id]
+
+    raise KeyError(f"No label found for subject folder '{folder_id}'")
 
 
 def find_file(subject_dir: Path, expected_name: str, suffix: str) -> Optional[Path]:
@@ -99,6 +129,7 @@ def build_manifest(args: argparse.Namespace) -> list[dict]:
         args.labels_csv,
         args.id_column,
         args.phq_column,
+        args.label_column,
         args.split_column,
         args.participant_column,
     )
@@ -129,14 +160,12 @@ def build_manifest(args: argparse.Namespace) -> list[dict]:
                 raise FileNotFoundError(f"No audio file ending with {args.audio_suffix} in {subject_dir}")
             if transcript_path is None:
                 raise FileNotFoundError(f"No transcript file ending with {args.transcript_suffix} in {subject_dir}")
-            if folder_id not in labels:
-                raise KeyError(f"No PHQ score found for subject folder '{folder_id}' in {args.labels_csv}")
 
-            label_info = labels[folder_id]
+            label_key, label_info = find_label_info(labels, folder_id)
             label_split = label_info["split"]
             if label_split is not None and label_split != split:
                 raise ValueError(
-                    f"Split mismatch for {folder_id}: folder is '{split}', "
+                    f"Split mismatch for {folder_id} (label id '{label_key}'): folder is '{split}', "
                     f"but labels CSV says '{label_split}'"
                 )
 
@@ -147,6 +176,7 @@ def build_manifest(args: argparse.Namespace) -> list[dict]:
                     "audio_path": str(audio_path.resolve()),
                     "transcript_path": str(transcript_path.resolve()),
                     "phq_score": label_info["phq_score"],
+                    "label": label_info["label"],
                     "split": split,
                 }
             )
