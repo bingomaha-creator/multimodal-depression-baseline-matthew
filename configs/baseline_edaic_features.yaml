@@ -1,7 +1,7 @@
 seed: 42
 
 data:
-  manifest_path: /home/rui/24zbma/data/E_DAIC/output/edaic_manifest.csv
+  manifest_path: /home/rui/24zbma/code/multimodal-depression-baseline-matthew/scripts/data/edaic_manifest.csv
   feature_cache_path: data/edaic_features.pt
   id_column: participant_id
   label_column: label
