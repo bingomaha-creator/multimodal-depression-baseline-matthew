@@ -11,7 +11,7 @@ data:
   audio_column: audio_path
   transcript_text_column: Text
   sample_rate: 16000
-  max_audio_length: 160000
+  max_audio_length: 320000
   max_text_length: 512
   num_workers: 0
 
