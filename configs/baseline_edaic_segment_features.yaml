@@ -14,8 +14,9 @@ data:
   transcript_end_column: End_Time
   transcript_confidence_column: Confidence
   sample_rate: 16000
-  segment_seconds: 60
-  max_segments: 20
+  segment_seconds: 20
+  max_segment_audio_seconds: 20
+  max_segments: 30
   min_segment_text_chars: 5
   min_confidence: 0.0
   audio_padding_seconds: 0.2

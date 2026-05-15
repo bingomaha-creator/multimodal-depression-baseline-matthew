@@ -72,6 +72,7 @@ def build_segments(transcript_path: Path, data_cfg: Dict[str, Any]) -> List[Dict
     confidence_column = data_cfg.get("transcript_confidence_column")
     min_confidence = float(data_cfg.get("min_confidence", 0.0))
     segment_seconds = float(data_cfg["segment_seconds"])
+    max_segment_audio_seconds = float(data_cfg.get("max_segment_audio_seconds", segment_seconds))
     min_segment_text_chars = int(data_cfg["min_segment_text_chars"])
     max_segments = int(data_cfg["max_segments"])
     padding_seconds = float(data_cfg["audio_padding_seconds"])
@@ -99,7 +100,10 @@ def build_segments(transcript_path: Path, data_cfg: Dict[str, Any]) -> List[Dict
             continue
 
         start_time = max(0.0, float(group[start_column].min()) - padding_seconds)
-        end_time = float(group[end_column].max()) + padding_seconds
+        end_time = min(
+            float(group[end_column].max()) + padding_seconds,
+            start_time + max_segment_audio_seconds,
+        )
         if end_time <= start_time:
             continue
 
@@ -256,6 +260,8 @@ def main() -> None:
             validate_embedding("audio", participant_id, audio_embedding)
             text_embeddings.append(text_embedding)
             audio_embeddings.append(audio_embedding)
+            if device.type == "cuda":
+                torch.cuda.empty_cache()
             segment_metadata.append(
                 {
                     "start_time": float(segment["start_time"]),
@@ -304,6 +310,7 @@ def main() -> None:
         "text_model_name": str(model_cfg["text_model_name"]),
         "audio_model_name": str(model_cfg["audio_model_name"]),
         "segment_seconds": float(data_cfg["segment_seconds"]),
+        "max_segment_audio_seconds": float(data_cfg.get("max_segment_audio_seconds", data_cfg["segment_seconds"])),
         "max_text_length": int(data_cfg["max_text_length"]),
         "skipped": skipped,
     }
