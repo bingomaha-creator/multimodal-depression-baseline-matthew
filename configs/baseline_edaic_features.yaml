@@ -2,7 +2,7 @@ seed: 42
 
 data:
   manifest_path: /home/rui/24zbma/code/multimodal-depression-baseline-matthew/scripts/data/edaic_manifest.csv
-  feature_cache_path: data/edaic_features.pt
+  feature_cache_path: data/edaic_features_320000.pt
   id_column: participant_id
   label_column: label
   phq_column: phq_score
@@ -29,6 +29,6 @@ training:
   weight_decay: 1.0e-4
   use_class_weights: true
   device: cuda
-  output_dir: outputs_edaic_features
+  output_dir: outputs_edaic_features_3200000
   monitor_metric: f1
   max_train_steps:

@@ -32,8 +32,8 @@ model:
 
 training:
   batch_size: 16
-  epochs: 30
-  learning_rate: 1.0e-6
+  epochs: 50
+  learning_rate: 5.0e-5
   weight_decay: 1.0e-4
   use_class_weights: true
   device: cuda
