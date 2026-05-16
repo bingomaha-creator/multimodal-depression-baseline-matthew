@@ -46,3 +46,4 @@ python -m src.extract_edaic_text_chunk_features --config configs/baseline_edaic_
 # 8. Text chunk baseline
 python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality text --output-dir outputs_edaic_text_chunk_features_320000
 python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --output-dir outputs_edaic_text_chunk_features_320000
+
