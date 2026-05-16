@@ -41,6 +41,18 @@ def chunk_token_ids(token_ids: List[int], chunk_size: int, max_chunks: int) -> L
     return chunks[:max_chunks]
 
 
+def tokenize_full_text(tokenizer: AutoTokenizer, text: str) -> List[int]:
+    if hasattr(tokenizer, "backend_tokenizer"):
+        return tokenizer.backend_tokenizer.encode(text, add_special_tokens=False).ids
+    return tokenizer(
+        text,
+        add_special_tokens=False,
+        truncation=False,
+        return_attention_mask=False,
+        verbose=False,
+    )["input_ids"]
+
+
 @torch.no_grad()
 def encode_text_chunks(
     text: str,
@@ -50,8 +62,10 @@ def encode_text_chunks(
     max_text_chunks: int,
     device: torch.device,
 ) -> tuple[torch.Tensor, int]:
-    token_ids = tokenizer(text, add_special_tokens=False)["input_ids"]
+    token_ids = tokenize_full_text(tokenizer, text)
     chunk_size = max_text_length - tokenizer.num_special_tokens_to_add(pair=False)
+    if chunk_size <= 0:
+        raise ValueError(f"max_text_length={max_text_length} is too small for tokenizer special tokens")
     chunks = chunk_token_ids(token_ids, chunk_size, max_text_chunks)
     if not chunks:
         chunks = [[]]
@@ -67,7 +81,10 @@ def encode_text_chunks(
             return_attention_mask=True,
             return_tensors="pt",
         )
-        encoded = {key: value.to(device) for key, value in encoded.items()}
+        encoded = {
+            key: (value.unsqueeze(0) if value.dim() == 1 else value).to(device)
+            for key, value in encoded.items()
+        }
         outputs = text_model(**encoded)
         embeddings.append(outputs.last_hidden_state[:, 0, :].squeeze(0).detach().cpu())
 
