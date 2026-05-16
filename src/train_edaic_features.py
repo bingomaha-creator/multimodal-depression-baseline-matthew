@@ -26,12 +26,39 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-train-steps", type=int, default=None, help="Optional train step limit for smoke tests.")
     parser.add_argument("--modality", choices=["text", "audio", "both"], default=None, help="Override model modality.")
     parser.add_argument("--overfit-small", type=int, default=None, help="Train/evaluate on N train items for debugging.")
+    parser.add_argument("--seed", type=int, default=None, help="Override config seed for stability runs.")
+    parser.add_argument("--output-dir", default=None, help="Override training.output_dir.")
+    parser.add_argument("--learning-rate", type=float, default=None, help="Override training.learning_rate.")
+    parser.add_argument("--dropout", type=float, default=None, help="Override model.dropout.")
+    parser.add_argument("--hidden-dim", type=int, default=None, help="Override model.hidden_dim.")
+    parser.add_argument(
+        "--use-class-weights",
+        choices=["true", "false"],
+        default=None,
+        help="Override training.use_class_weights.",
+    )
     return parser.parse_args()
 
 
 def load_config(path: str) -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as file:
         return yaml.safe_load(file)
+
+
+def apply_overrides(config: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
+    if args.seed is not None:
+        config["seed"] = int(args.seed)
+    if args.output_dir is not None:
+        config["training"]["output_dir"] = args.output_dir
+    if args.learning_rate is not None:
+        config["training"]["learning_rate"] = float(args.learning_rate)
+    if args.dropout is not None:
+        config["model"]["dropout"] = float(args.dropout)
+    if args.hidden_dim is not None:
+        config["model"]["hidden_dim"] = int(args.hidden_dim)
+    if args.use_class_weights is not None:
+        config["training"]["use_class_weights"] = args.use_class_weights == "true"
+    return config
 
 
 def resolve_device(config_device: str) -> torch.device:
@@ -247,7 +274,7 @@ def evaluate(
 
 def main() -> None:
     args = parse_args()
-    config = load_config(args.config)
+    config = apply_overrides(load_config(args.config), args)
     set_seed(int(config["seed"]))
 
     data_cfg = config["data"]
