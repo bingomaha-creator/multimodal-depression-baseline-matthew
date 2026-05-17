@@ -1,0 +1,36 @@
+seed: 42
+
+data:
+  manifest_path: /home/rui/24zbma/code/multimodal-depression-baseline-matthew/scripts/data/edaic_manifest.csv
+  feature_cache_path: data/edaic_text_audio_chunk_features_20s12.pt
+  id_column: participant_id
+  label_column: label
+  phq_column: phq_score
+  split_column: split
+  text_column: transcript_path
+  audio_column: audio_path
+  transcript_text_column: Text
+  sample_rate: 16000
+  audio_chunk_seconds: 20
+  max_audio_chunks: 12
+  max_text_length: 512
+  max_text_chunks: 12
+  num_workers: 0
+
+model:
+  text_model_name: /home/rui/24zbma/models/roberta-base
+  audio_model_name: /home/rui/24zbma/models/wav2vec
+  hidden_dim: 256
+  dropout: 0.1
+  modality: both
+
+training:
+  batch_size: 16
+  epochs: 50
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-4
+  use_class_weights: true
+  device: cuda
+  output_dir: outputs_edaic_text_audio_chunk_features_20s12
+  monitor_metric: f1
+  max_train_steps:

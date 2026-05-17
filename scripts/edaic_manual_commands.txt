@@ -47,3 +47,38 @@ python -m src.extract_edaic_text_chunk_features --config configs/baseline_edaic_
 python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality text --output-dir outputs_edaic_text_chunk_features_320000
 python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --output-dir outputs_edaic_text_chunk_features_320000
 
+
+# 9. Multi-seed stability for text chunk both
+# Use this to check whether the text-chunk improvement is stable.
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --seed 42 --output-dir outputs_edaic_text_chunk_features_320000_seed42
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --seed 3407 --output-dir outputs_edaic_text_chunk_features_320000_seed3407
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --seed 2025 --output-dir outputs_edaic_text_chunk_features_320000_seed2025
+
+
+# 10. Class-weight ablation for text chunk both
+# Class weights may increase recall but can also make the model predict too many positive samples.
+# Compare these two runs on dev first; use test only after choosing the setting.
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --use-class-weights true --output-dir outputs_edaic_text_chunk_features_320000_class_weights_true
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --use-class-weights false --output-dir outputs_edaic_text_chunk_features_320000_class_weights_false
+
+
+# 11. Summarize text chunk multi-seed test metrics
+python scripts/summarize_edaic_feature_runs.py outputs_edaic_text_chunk_features_320000_seed42/both outputs_edaic_text_chunk_features_320000_seed3407/both outputs_edaic_text_chunk_features_320000_seed2025/both
+
+
+# 12. Text chunk + uniform audio chunk feature extraction
+# Text uses full-transcript 512-token chunks.
+# Audio uses evenly spaced 20-second chunks over the full waveform and mean-pools wav2vec2 embeddings.
+python -m src.extract_edaic_text_audio_chunk_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --limit 2 --output data/edaic_text_audio_chunk_features_20s12_smoke.pt
+python -m src.extract_edaic_text_audio_chunk_features --config configs/baseline_edaic_text_audio_chunk_features.yaml
+
+
+# 13. Text chunk + uniform audio chunk baseline
+python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality text --output-dir outputs_edaic_text_audio_chunk_features_20s12
+python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality audio --output-dir outputs_edaic_text_audio_chunk_features_20s12
+python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality both --output-dir outputs_edaic_text_audio_chunk_features_20s12
+
+
+# 14. Class-weight ablation for text chunk + uniform audio chunk both
+python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality both --use-class-weights true --output-dir outputs_edaic_text_audio_chunk_features_20s12_class_weights_true
+python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality both --use-class-weights false --output-dir outputs_edaic_text_audio_chunk_features_20s12_class_weights_false

@@ -10,12 +10,15 @@ set -euo pipefail
 # PLAIN_CONFIG=configs/other.yaml bash scripts/run_edaic_baseline_experiments.sh
 PLAIN_CONFIG="${PLAIN_CONFIG:-configs/baseline_edaic_features.yaml}"
 CHUNK_CONFIG="${CHUNK_CONFIG:-configs/baseline_edaic_text_chunk_features.yaml}"
+TEXT_AUDIO_CHUNK_CONFIG="${TEXT_AUDIO_CHUNK_CONFIG:-configs/baseline_edaic_text_audio_chunk_features.yaml}"
 PLAIN_CACHE="${PLAIN_CACHE:-data/edaic_features_320000.pt}"
 CHUNK_CACHE="${CHUNK_CACHE:-data/edaic_text_chunk_features_320000.pt}"
+TEXT_AUDIO_CHUNK_CACHE="${TEXT_AUDIO_CHUNK_CACHE:-data/edaic_text_audio_chunk_features_20s12.pt}"
 
 echo "== E-DAIC baseline experiment runner =="
 echo "plain config: ${PLAIN_CONFIG}"
 echo "chunk config: ${CHUNK_CONFIG}"
+echo "text/audio chunk config: ${TEXT_AUDIO_CHUNK_CONFIG}"
 
 # Plain feature cache:
 # - Uses the original plain feature pipeline.
@@ -140,9 +143,54 @@ python -m src.train_edaic_features \
   --output-dir outputs_edaic_text_chunk_features_320000
 
 echo
+echo "== Text chunk + uniform audio chunk feature extraction =="
+# Text/audio chunk cache:
+# - Text uses full-transcript 512-token chunks.
+# - Audio uses evenly spaced 20-second chunks over the full waveform.
+# - The saved cache is still compatible with src.train_edaic_features.
+if [[ ! -f "${TEXT_AUDIO_CHUNK_CACHE}" ]]; then
+  python -m src.extract_edaic_text_audio_chunk_features --config "${TEXT_AUDIO_CHUNK_CONFIG}"
+else
+  echo "Found ${TEXT_AUDIO_CHUNK_CACHE}; skip text/audio chunk feature extraction."
+fi
+
+echo
+echo "== Text chunk + uniform audio chunk baseline: text/audio/both =="
+python -m src.train_edaic_features \
+  --config "${TEXT_AUDIO_CHUNK_CONFIG}" \
+  --modality text \
+  --output-dir outputs_edaic_text_audio_chunk_features_20s12
+
+python -m src.train_edaic_features \
+  --config "${TEXT_AUDIO_CHUNK_CONFIG}" \
+  --modality audio \
+  --output-dir outputs_edaic_text_audio_chunk_features_20s12
+
+python -m src.train_edaic_features \
+  --config "${TEXT_AUDIO_CHUNK_CONFIG}" \
+  --modality both \
+  --output-dir outputs_edaic_text_audio_chunk_features_20s12
+
+echo
+echo "== Text chunk + uniform audio chunk both: class-weight ablation =="
+python -m src.train_edaic_features \
+  --config "${TEXT_AUDIO_CHUNK_CONFIG}" \
+  --modality both \
+  --use-class-weights true \
+  --output-dir outputs_edaic_text_audio_chunk_features_20s12_class_weights_true
+
+python -m src.train_edaic_features \
+  --config "${TEXT_AUDIO_CHUNK_CONFIG}" \
+  --modality both \
+  --use-class-weights false \
+  --output-dir outputs_edaic_text_audio_chunk_features_20s12_class_weights_false
+
+echo
 echo "Done. Main outputs:"
 echo "- outputs_edaic_features_320000_baseline"
 echo "- outputs_edaic_features_320000_seed*"
 echo "- outputs_edaic_features_320000_class_weights_*"
 echo "- outputs_edaic_features_320000_lr*"
 echo "- outputs_edaic_text_chunk_features_320000"
+echo "- outputs_edaic_text_audio_chunk_features_20s12"
+echo "- outputs_edaic_text_audio_chunk_features_20s12_class_weights_*"
