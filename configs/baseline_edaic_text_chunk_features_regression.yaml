@@ -28,8 +28,11 @@ training:
   epochs: 50
   learning_rate: 1.0e-4
   weight_decay: 1.0e-4
-  regression_loss: smooth_l1
+  regression_loss: mse
+  normalize_target: true
+  use_regression_weights: true
+  positive_weight: auto
   device: cuda
-  output_dir: outputs_edaic_text_chunk_features_320000_regression
+  output_dir: outputs_edaic_text_chunk_features_320000_regression_v2
   monitor_metric: mae
   max_train_steps:

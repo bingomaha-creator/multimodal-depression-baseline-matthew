@@ -3,7 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -84,6 +85,66 @@ def phq_scores_from_dataset(dataset: EDAICFeatureDataset) -> np.ndarray:
     return np.array([float(item["phq_score"]) for item in dataset.items], dtype=float)
 
 
+@dataclass
+class TargetNormalizer:
+    mean: float = 0.0
+    std: float = 1.0
+    enabled: bool = False
+
+    def normalize(self, values: torch.Tensor) -> torch.Tensor:
+        if not self.enabled:
+            return values
+        return (values - self.mean) / self.std
+
+    def denormalize(self, values: torch.Tensor) -> torch.Tensor:
+        if not self.enabled:
+            return values
+        return (values * self.std) + self.mean
+
+
+def build_target_normalizer(dataset: EDAICFeatureDataset, train_cfg: Dict[str, Any]) -> TargetNormalizer:
+    enabled = bool(train_cfg.get("normalize_target", False))
+    if not enabled:
+        return TargetNormalizer(enabled=False)
+
+    scores = phq_scores_from_dataset(dataset)
+    mean = float(np.mean(scores)) if scores.size else 0.0
+    std = float(np.std(scores)) if scores.size else 1.0
+    if std <= 0.0:
+        std = 1.0
+    return TargetNormalizer(mean=mean, std=std, enabled=True)
+
+
+def compute_regression_weights(labels: torch.Tensor, positive_weight: Union[str, float] = "auto") -> torch.Tensor:
+    labels_float = labels.float()
+    if str(positive_weight).lower() == "auto":
+        num_pos = float(labels_float.sum().item())
+        num_neg = float(labels_float.numel() - num_pos)
+        weight_value = num_neg / max(num_pos, 1.0)
+    else:
+        weight_value = float(positive_weight)
+
+    weights = torch.ones_like(labels_float)
+    weights = torch.where(labels_float >= 0.5, weights * weight_value, weights)
+    return weights
+
+
+def resolve_positive_weight(dataset: EDAICFeatureDataset, positive_weight: Union[str, float]) -> float:
+    if str(positive_weight).lower() != "auto":
+        return float(positive_weight)
+
+    labels = [int(item["label"]) for item in dataset.items]
+    num_pos = sum(labels)
+    num_neg = len(labels) - num_pos
+    return float(num_neg / max(num_pos, 1))
+
+
+def weighted_mean_loss(losses: torch.Tensor, weights: Optional[torch.Tensor] = None) -> torch.Tensor:
+    if weights is None:
+        return losses.mean()
+    return (losses * weights).sum() / weights.sum().clamp(min=1.0)
+
+
 def validate_split_scores(datasets: Dict[str, EDAICFeatureDataset]) -> None:
     for split, dataset in datasets.items():
         scores = phq_scores_from_dataset(dataset)
@@ -145,9 +206,9 @@ def build_model(
 def build_criterion(train_cfg: Dict[str, Any]) -> nn.Module:
     loss_name = str(train_cfg.get("regression_loss", "smooth_l1")).lower()
     if loss_name == "smooth_l1":
-        return nn.SmoothL1Loss()
+        return nn.SmoothL1Loss(reduction="none")
     if loss_name == "mse":
-        return nn.MSELoss()
+        return nn.MSELoss(reduction="none")
     raise ValueError("training.regression_loss must be one of: smooth_l1, mse")
 
 
@@ -164,6 +225,8 @@ def train_one_epoch(
     loader: DataLoader,
     optimizer: torch.optim.Optimizer,
     criterion: nn.Module,
+    normalizer: TargetNormalizer,
+    train_cfg: Dict[str, Any],
     device: torch.device,
     epoch: int,
     max_train_steps: Optional[int] = None,
@@ -180,7 +243,15 @@ def train_one_epoch(
             text_embeddings=batch["text_embeddings"],
             audio_embeddings=batch["audio_embeddings"],
         )
-        loss = criterion(predictions, batch["phq_scores"])
+        targets = normalizer.normalize(batch["phq_scores"])
+        losses = criterion(predictions, targets)
+        weights = None
+        if bool(train_cfg.get("use_regression_weights", False)):
+            weights = compute_regression_weights(
+                batch["labels"],
+                positive_weight=train_cfg.get("positive_weight", "auto"),
+            )
+        loss = weighted_mean_loss(losses, weights)
         loss.backward()
         optimizer.step()
 
@@ -198,6 +269,7 @@ def evaluate(
     model: nn.Module,
     loader: DataLoader,
     criterion: nn.Module,
+    normalizer: TargetNormalizer,
     device: torch.device,
 ) -> tuple[Dict[str, float], pd.DataFrame]:
     model.eval()
@@ -212,7 +284,9 @@ def evaluate(
             text_embeddings=batch["text_embeddings"],
             audio_embeddings=batch["audio_embeddings"],
         )
-        loss = criterion(pred_scores, batch["phq_scores"])
+        normalized_targets = normalizer.normalize(batch["phq_scores"])
+        loss = criterion(pred_scores, normalized_targets).mean()
+        pred_scores = normalizer.denormalize(pred_scores)
 
         batch_targets = batch["phq_scores"].detach().cpu().numpy().tolist()
         batch_predictions = pred_scores.detach().cpu().numpy().tolist()
@@ -240,6 +314,7 @@ def evaluate(
 
     metrics = regression_metrics(np.array(targets), np.array(predictions))
     metrics["loss"] = float(np.mean(losses)) if losses else 0.0
+    metrics["loss_space"] = "normalized" if normalizer.enabled else "raw"
     metrics["pred_min"] = float(np.min(predictions)) if predictions else 0.0
     metrics["pred_max"] = float(np.max(predictions)) if predictions else 0.0
     metrics["pred_mean"] = float(np.mean(predictions)) if predictions else 0.0
@@ -275,6 +350,21 @@ def main() -> None:
         weight_decay=float(train_cfg["weight_decay"]),
     )
     criterion = build_criterion(train_cfg)
+    normalizer = build_target_normalizer(loaders["train"].dataset, train_cfg)
+    if bool(train_cfg.get("use_regression_weights", False)):
+        train_cfg["positive_weight"] = resolve_positive_weight(
+            loaders["train"].dataset,
+            train_cfg.get("positive_weight", "auto"),
+        )
+    print(
+        "target_normalizer: "
+        f"enabled={normalizer.enabled} mean={normalizer.mean:.4f} std={normalizer.std:.4f}"
+    )
+    print(
+        "regression_weights: "
+        f"enabled={bool(train_cfg.get('use_regression_weights', False))} "
+        f"positive_weight={train_cfg.get('positive_weight', 'auto')}"
+    )
 
     max_train_steps = args.max_train_steps
     if max_train_steps is None:
@@ -293,12 +383,17 @@ def main() -> None:
             loader=loaders["train"],
             optimizer=optimizer,
             criterion=criterion,
+            normalizer=normalizer,
+            train_cfg=train_cfg,
             device=device,
             epoch=epoch,
             max_train_steps=max_train_steps,
         )
-        dev_metrics, _ = evaluate(model, loaders["dev"], criterion, device)
+        dev_metrics, _ = evaluate(model, loaders["dev"], criterion, normalizer, device)
         dev_metrics["train_loss"] = train_loss
+        dev_metrics["target_normalizer"] = asdict(normalizer)
+        dev_metrics["use_regression_weights"] = bool(train_cfg.get("use_regression_weights", False))
+        dev_metrics["positive_weight"] = str(train_cfg.get("positive_weight", "auto"))
         print(
             f"epoch={epoch} train_loss={train_loss:.4f} "
             f"dev_mae={dev_metrics['mae']:.4f} dev_rmse={dev_metrics['rmse']:.4f} "
@@ -316,6 +411,7 @@ def main() -> None:
                     "modality": modality,
                     "monitor_metric": monitor_metric,
                     "metrics": dev_metrics,
+                    "target_normalizer": asdict(normalizer),
                     "metadata": loaders["train"].dataset.metadata,
                 },
                 best_path,
@@ -324,8 +420,14 @@ def main() -> None:
     checkpoint = torch.load(best_path, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
 
-    dev_metrics, dev_predictions = evaluate(model, loaders["dev"], criterion, device)
-    test_metrics, test_predictions = evaluate(model, loaders["test"], criterion, device)
+    dev_metrics, dev_predictions = evaluate(model, loaders["dev"], criterion, normalizer, device)
+    test_metrics, test_predictions = evaluate(model, loaders["test"], criterion, normalizer, device)
+    dev_metrics["target_normalizer"] = asdict(normalizer)
+    test_metrics["target_normalizer"] = asdict(normalizer)
+    dev_metrics["use_regression_weights"] = bool(train_cfg.get("use_regression_weights", False))
+    test_metrics["use_regression_weights"] = bool(train_cfg.get("use_regression_weights", False))
+    dev_metrics["positive_weight"] = str(train_cfg.get("positive_weight", "auto"))
+    test_metrics["positive_weight"] = str(train_cfg.get("positive_weight", "auto"))
 
     dev_predictions.to_csv(predictions_dir / "dev_predictions.csv", index=False)
     test_predictions.to_csv(predictions_dir / "test_predictions.csv", index=False)

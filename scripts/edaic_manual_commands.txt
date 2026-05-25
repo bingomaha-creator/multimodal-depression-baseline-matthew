@@ -86,12 +86,13 @@ python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_ch
 
 # 15. Text chunk regression baseline for PHQ score prediction
 # Reuses data/edaic_text_chunk_features_320000.pt from step 7.
+# v2 normalizes PHQ targets, trains with MSE, and weights PHQ>=10 samples by default.
 # Metrics saved: MAE, RMSE, CCC. Lower MAE/RMSE is better; higher CCC is better.
 python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality text
 python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both
 
 
 # 16. Multi-seed stability for text chunk regression both
-python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 42 --output-dir outputs_edaic_text_chunk_features_320000_regression_seed42
-python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 3407 --output-dir outputs_edaic_text_chunk_features_320000_regression_seed3407
-python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 2025 --output-dir outputs_edaic_text_chunk_features_320000_regression_seed2025
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 42 --output-dir outputs_edaic_text_chunk_features_320000_regression_v2_seed42
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 3407 --output-dir outputs_edaic_text_chunk_features_320000_regression_v2_seed3407
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 2025 --output-dir outputs_edaic_text_chunk_features_320000_regression_v2_seed2025
