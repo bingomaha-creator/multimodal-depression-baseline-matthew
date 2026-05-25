@@ -1,3 +1,4 @@
+import argparse
 import unittest
 
 import numpy as np
@@ -6,6 +7,7 @@ import torch
 from src.models.edaic_feature_regression_baseline import EDAICFeatureRegressionBaseline
 from src.train_edaic_features_regression import (
     TargetNormalizer,
+    apply_overrides,
     compute_regression_weights,
     weighted_mean_loss,
 )
@@ -84,6 +86,42 @@ class RegressionTrainingHelpersTest(unittest.TestCase):
         loss = weighted_mean_loss(losses, weights)
 
         self.assertAlmostEqual(float(loss), 2.5)
+
+    def test_apply_overrides_sets_ablation_options(self):
+        config = {
+            "seed": 42,
+            "model": {"dropout": 0.1, "hidden_dim": 256},
+            "training": {
+                "output_dir": "outputs",
+                "learning_rate": 1e-4,
+                "regression_loss": "mse",
+                "normalize_target": True,
+                "use_regression_weights": True,
+                "positive_weight": "auto",
+                "monitor_metric": "mae",
+            },
+        }
+        args = argparse.Namespace(
+            seed=None,
+            output_dir="outputs_ablation",
+            learning_rate=None,
+            dropout=None,
+            hidden_dim=None,
+            loss="smooth_l1",
+            normalize_target="false",
+            use_regression_weights="false",
+            positive_weight="2.0",
+            monitor_metric="ccc",
+        )
+
+        updated = apply_overrides(config, args)
+
+        self.assertEqual(updated["training"]["output_dir"], "outputs_ablation")
+        self.assertEqual(updated["training"]["regression_loss"], "smooth_l1")
+        self.assertFalse(updated["training"]["normalize_target"])
+        self.assertFalse(updated["training"]["use_regression_weights"])
+        self.assertEqual(updated["training"]["positive_weight"], 2.0)
+        self.assertEqual(updated["training"]["monitor_metric"], "ccc")
 
 
 if __name__ == "__main__":

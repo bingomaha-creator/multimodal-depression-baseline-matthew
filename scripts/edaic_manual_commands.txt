@@ -96,3 +96,17 @@ python -m src.train_edaic_features_regression --config configs/baseline_edaic_te
 python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 42 --output-dir outputs_edaic_text_chunk_features_320000_regression_v2_seed42
 python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 3407 --output-dir outputs_edaic_text_chunk_features_320000_regression_v2_seed3407
 python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 2025 --output-dir outputs_edaic_text_chunk_features_320000_regression_v2_seed2025
+
+
+# 17. Text chunk regression ablations for diagnosing MAE/CCC trade-offs
+# A. Keep normalized MSE but remove positive weighting; checks whether v2 over-predicts low PHQ because weights are too strong.
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --use-regression-weights false --output-dir outputs_edaic_text_chunk_features_320000_regression_ablation_no_weights
+
+# B. Keep weighting but make it lighter than auto; auto is about 3.4 on the current train split.
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --use-regression-weights true --positive-weight 2.0 --output-dir outputs_edaic_text_chunk_features_320000_regression_ablation_weight2
+
+# C. Keep v2 training objective but select the checkpoint by dev CCC instead of dev MAE.
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --monitor-metric ccc --output-dir outputs_edaic_text_chunk_features_320000_regression_ablation_ccc_monitor
+
+# D. Keep target normalization and auto weighting, but use SmoothL1 in normalized space to reduce overshooting low PHQ samples.
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --loss smooth_l1 --output-dir outputs_edaic_text_chunk_features_320000_regression_ablation_smooth_l1

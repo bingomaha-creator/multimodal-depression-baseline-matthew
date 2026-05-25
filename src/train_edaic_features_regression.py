@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
-from dataclasses import asdict, dataclass
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
@@ -38,6 +38,29 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Override training.regression_loss.",
     )
+    parser.add_argument(
+        "--normalize-target",
+        choices=["true", "false"],
+        default=None,
+        help="Override training.normalize_target.",
+    )
+    parser.add_argument(
+        "--use-regression-weights",
+        choices=["true", "false"],
+        default=None,
+        help="Override training.use_regression_weights.",
+    )
+    parser.add_argument(
+        "--positive-weight",
+        default=None,
+        help="Override training.positive_weight. Use 'auto' or a numeric weight.",
+    )
+    parser.add_argument(
+        "--monitor-metric",
+        choices=["mae", "rmse", "ccc", "loss"],
+        default=None,
+        help="Override training.monitor_metric.",
+    )
     return parser.parse_args()
 
 
@@ -59,6 +82,17 @@ def apply_overrides(config: Dict[str, Any], args: argparse.Namespace) -> Dict[st
         config["model"]["hidden_dim"] = int(args.hidden_dim)
     if args.loss is not None:
         config["training"]["regression_loss"] = args.loss
+    if args.normalize_target is not None:
+        config["training"]["normalize_target"] = args.normalize_target == "true"
+    if args.use_regression_weights is not None:
+        config["training"]["use_regression_weights"] = args.use_regression_weights == "true"
+    if args.positive_weight is not None:
+        if args.positive_weight.lower() == "auto":
+            config["training"]["positive_weight"] = "auto"
+        else:
+            config["training"]["positive_weight"] = float(args.positive_weight)
+    if args.monitor_metric is not None:
+        config["training"]["monitor_metric"] = args.monitor_metric
     return config
 
 
