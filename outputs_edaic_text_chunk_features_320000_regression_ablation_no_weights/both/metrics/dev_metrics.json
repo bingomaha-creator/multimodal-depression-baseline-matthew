@@ -1,0 +1,17 @@
+{
+  "mae": 4.448765512023654,
+  "rmse": 5.438109604531577,
+  "ccc": 0.12447174532118277,
+  "loss": 0.842735767364502,
+  "loss_space": "normalized",
+  "pred_min": 3.7480406761169434,
+  "pred_max": 9.54325008392334,
+  "pred_mean": 6.310084687811988,
+  "target_normalizer": {
+    "mean": 6.656441717791411,
+    "std": 6.093726400902584,
+    "enabled": true
+  },
+  "use_regression_weights": false,
+  "positive_weight": "auto"
+}
