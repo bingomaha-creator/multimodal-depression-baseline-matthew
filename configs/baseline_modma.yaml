@@ -28,6 +28,6 @@ training:
   weight_decay: 1.0e-4
   use_class_weights: true
   device: cuda
-  output_dir: outputs_modma
+  output_dir: runs/modma/cv/main
   monitor_metric: f1
   max_train_steps:

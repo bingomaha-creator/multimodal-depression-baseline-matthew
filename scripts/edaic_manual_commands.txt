@@ -2,6 +2,11 @@
 # Run these one by one on the server from the repository root:
 #
 # cd /home/rui/24zbma/code/multimodal-depression-baseline-matthew
+#
+# Output directory convention:
+# - E-DAIC classification: runs/edaic/classification/<feature_or_method>/<variant>/<modality>
+# - E-DAIC regression: runs/edaic/regression/<feature_or_method>/<variant>/<modality>
+# - The training scripts append the final modality folder automatically.
 
 
 # 1. Plain 320000 feature extraction
@@ -10,32 +15,32 @@ python -m src.extract_edaic_features --config configs/baseline_edaic_features.ya
 
 
 # 2. Plain 320000 modality baseline
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality text --output-dir outputs_edaic_features_320000_baseline
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality audio --output-dir outputs_edaic_features_320000_baseline
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --output-dir outputs_edaic_features_320000_baseline
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality text --output-dir runs/edaic/classification/plain_320000/main
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality audio --output-dir runs/edaic/classification/plain_320000/main
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --output-dir runs/edaic/classification/plain_320000/main
 
 
 # 3. Multi-seed stability for plain 320000 both
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --seed 42 --output-dir outputs_edaic_features_320000_seed42
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --seed 3407 --output-dir outputs_edaic_features_320000_seed3407
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --seed 2025 --output-dir outputs_edaic_features_320000_seed2025
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --seed 42 --output-dir runs/edaic/classification/plain_320000/seed_42
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --seed 3407 --output-dir runs/edaic/classification/plain_320000/seed_3407
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --seed 2025 --output-dir runs/edaic/classification/plain_320000/seed_2025
 
 
 # 4. Summarize multi-seed test metrics
-python scripts/summarize_edaic_feature_runs.py outputs_edaic_features_320000_seed42/both outputs_edaic_features_320000_seed3407/both outputs_edaic_features_320000_seed2025/both
+python scripts/summarize_edaic_feature_runs.py runs/edaic/classification/plain_320000/seed_42/both runs/edaic/classification/plain_320000/seed_3407/both runs/edaic/classification/plain_320000/seed_2025/both
 
 
 # 5. Class-weight ablation for plain 320000 both
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --use-class-weights true --output-dir outputs_edaic_features_320000_class_weights_true
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --use-class-weights false --output-dir outputs_edaic_features_320000_class_weights_false
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --use-class-weights true --output-dir runs/edaic/classification/plain_320000/class_weight_true
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --use-class-weights false --output-dir runs/edaic/classification/plain_320000/class_weight_false
 
 
 # 6. Small hyperparameter checks for plain 320000 both
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --learning-rate 5.0e-5 --dropout 0.1 --hidden-dim 256 --output-dir outputs_edaic_features_320000_lr5e-5_dropout0.1_hidden256
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --learning-rate 1.0e-4 --dropout 0.1 --hidden-dim 256 --output-dir outputs_edaic_features_320000_lr1e-4_dropout0.1_hidden256
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --learning-rate 3.0e-4 --dropout 0.1 --hidden-dim 256 --output-dir outputs_edaic_features_320000_lr3e-4_dropout0.1_hidden256
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --learning-rate 1.0e-4 --dropout 0.3 --hidden-dim 256 --output-dir outputs_edaic_features_320000_lr1e-4_dropout0.3_hidden256
-python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --learning-rate 1.0e-4 --dropout 0.1 --hidden-dim 128 --output-dir outputs_edaic_features_320000_lr1e-4_dropout0.1_hidden128
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --learning-rate 5.0e-5 --dropout 0.1 --hidden-dim 256 --output-dir runs/edaic/classification/plain_320000/lr_5e-5_dropout_0.1_hidden_256
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --learning-rate 1.0e-4 --dropout 0.1 --hidden-dim 256 --output-dir runs/edaic/classification/plain_320000/lr_1e-4_dropout_0.1_hidden_256
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --learning-rate 3.0e-4 --dropout 0.1 --hidden-dim 256 --output-dir runs/edaic/classification/plain_320000/lr_3e-4_dropout_0.1_hidden_256
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --learning-rate 1.0e-4 --dropout 0.3 --hidden-dim 256 --output-dir runs/edaic/classification/plain_320000/lr_1e-4_dropout_0.3_hidden_256
+python -m src.train_edaic_features --config configs/baseline_edaic_features.yaml --modality both --learning-rate 1.0e-4 --dropout 0.1 --hidden-dim 128 --output-dir runs/edaic/classification/plain_320000/lr_1e-4_dropout_0.1_hidden_128
 
 
 # 7. Text chunk feature extraction
@@ -44,26 +49,26 @@ python -m src.extract_edaic_text_chunk_features --config configs/baseline_edaic_
 
 
 # 8. Text chunk baseline
-python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality text --output-dir outputs_edaic_text_chunk_features_320000
-python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --output-dir outputs_edaic_text_chunk_features_320000
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality text --output-dir runs/edaic/classification/text_chunk_320000/main
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --output-dir runs/edaic/classification/text_chunk_320000/main
 
 
 # 9. Multi-seed stability for text chunk both
 # Use this to check whether the text-chunk improvement is stable.
-python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --seed 42 --output-dir outputs_edaic_text_chunk_features_320000_seed42
-python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --seed 3407 --output-dir outputs_edaic_text_chunk_features_320000_seed3407
-python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --seed 2025 --output-dir outputs_edaic_text_chunk_features_320000_seed2025
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --seed 42 --output-dir runs/edaic/classification/text_chunk_320000/seed_42
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --seed 3407 --output-dir runs/edaic/classification/text_chunk_320000/seed_3407
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --seed 2025 --output-dir runs/edaic/classification/text_chunk_320000/seed_2025
 
 
 # 10. Class-weight ablation for text chunk both
 # Class weights may increase recall but can also make the model predict too many positive samples.
 # Compare these two runs on dev first; use test only after choosing the setting.
-python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --use-class-weights true --output-dir outputs_edaic_text_chunk_features_320000_class_weights_true
-python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --use-class-weights false --output-dir outputs_edaic_text_chunk_features_320000_class_weights_false
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --use-class-weights true --output-dir runs/edaic/classification/text_chunk_320000/class_weight_true
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_features.yaml --modality both --use-class-weights false --output-dir runs/edaic/classification/text_chunk_320000/class_weight_false
 
 
 # 11. Summarize text chunk multi-seed test metrics
-python scripts/summarize_edaic_feature_runs.py outputs_edaic_text_chunk_features_320000_seed42/both outputs_edaic_text_chunk_features_320000_seed3407/both outputs_edaic_text_chunk_features_320000_seed2025/both
+python scripts/summarize_edaic_feature_runs.py runs/edaic/classification/text_chunk_320000/seed_42/both runs/edaic/classification/text_chunk_320000/seed_3407/both runs/edaic/classification/text_chunk_320000/seed_2025/both
 
 
 # 12. Text chunk + uniform audio chunk feature extraction
@@ -74,14 +79,14 @@ python -m src.extract_edaic_text_audio_chunk_features --config configs/baseline_
 
 
 # 13. Text chunk + uniform audio chunk baseline
-python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality text --output-dir outputs_edaic_text_audio_chunk_features_20s12
-python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality audio --output-dir outputs_edaic_text_audio_chunk_features_20s12
-python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality both --output-dir outputs_edaic_text_audio_chunk_features_20s12
+python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality text --output-dir runs/edaic/classification/text_audio_chunk_20s12/main
+python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality audio --output-dir runs/edaic/classification/text_audio_chunk_20s12/main
+python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality both --output-dir runs/edaic/classification/text_audio_chunk_20s12/main
 
 
 # 14. Class-weight ablation for text chunk + uniform audio chunk both
-python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality both --use-class-weights true --output-dir outputs_edaic_text_audio_chunk_features_20s12_class_weights_true
-python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality both --use-class-weights false --output-dir outputs_edaic_text_audio_chunk_features_20s12_class_weights_false
+python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality both --use-class-weights true --output-dir runs/edaic/classification/text_audio_chunk_20s12/class_weight_true
+python -m src.train_edaic_features --config configs/baseline_edaic_text_audio_chunk_features.yaml --modality both --use-class-weights false --output-dir runs/edaic/classification/text_audio_chunk_20s12/class_weight_false
 
 
 # 15. Text chunk regression baseline for PHQ score prediction
@@ -93,20 +98,43 @@ python -m src.train_edaic_features_regression --config configs/baseline_edaic_te
 
 
 # 16. Multi-seed stability for text chunk regression both
-python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 42 --output-dir outputs_edaic_text_chunk_features_320000_regression_v2_seed42
-python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 3407 --output-dir outputs_edaic_text_chunk_features_320000_regression_v2_seed3407
-python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 2025 --output-dir outputs_edaic_text_chunk_features_320000_regression_v2_seed2025
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 42 --output-dir runs/edaic/regression/text_chunk_320000/seed_42
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 3407 --output-dir runs/edaic/regression/text_chunk_320000/seed_3407
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --seed 2025 --output-dir runs/edaic/regression/text_chunk_320000/seed_2025
 
 
 # 17. Text chunk regression ablations for diagnosing MAE/CCC trade-offs
 # A. Keep normalized MSE but remove positive weighting; checks whether v2 over-predicts low PHQ because weights are too strong.
-python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --use-regression-weights false --output-dir outputs_edaic_text_chunk_features_320000_regression_ablation_no_weights
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --use-regression-weights false --output-dir runs/edaic/regression/text_chunk_320000/ablation_no_weights
 
 # B. Keep weighting but make it lighter than auto; auto is about 3.4 on the current train split.
-python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --use-regression-weights true --positive-weight 2.0 --output-dir outputs_edaic_text_chunk_features_320000_regression_ablation_weight2
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --use-regression-weights true --positive-weight 2.0 --output-dir runs/edaic/regression/text_chunk_320000/ablation_weight2
 
 # C. Keep v2 training objective but select the checkpoint by dev CCC instead of dev MAE.
-python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --monitor-metric ccc --output-dir outputs_edaic_text_chunk_features_320000_regression_ablation_ccc_monitor
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --monitor-metric ccc --output-dir runs/edaic/regression/text_chunk_320000/ablation_ccc_monitor
 
 # D. Keep target normalization and auto weighting, but use SmoothL1 in normalized space to reduce overshooting low PHQ samples.
-python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --loss smooth_l1 --output-dir outputs_edaic_text_chunk_features_320000_regression_ablation_smooth_l1
+python -m src.train_edaic_features_regression --config configs/baseline_edaic_text_chunk_features_regression.yaml --modality both --loss smooth_l1 --output-dir runs/edaic/regression/text_chunk_320000/ablation_smooth_l1
+
+
+# task：文章，数据集adoads文章，edaic数据集样本精确匹配
+
+
+# 18. Timestamp-filtered compact speech feature extraction
+# Uses transcript Start_Time/End_Time to extract valid speech audio pieces.
+# Text and audio are accumulated together from the same transcript rows.
+# A new paired chunk starts when either audio seconds or text tokens exceed the threshold.
+# Abnormal timestamp rows are filtered, for example very long raw rows such as 14.3 -> 648.3.
+python -m src.extract_edaic_compact_speech_features --config configs/baseline_edaic_compact_speech_features.yaml --limit 2 --output data/edaic_compact_speech_features_smoke.pt
+python -m src.extract_edaic_compact_speech_features --config configs/baseline_edaic_compact_speech_features.yaml
+
+
+# 19. Timestamp-filtered compact speech baseline
+python -m src.train_edaic_features --config configs/baseline_edaic_compact_speech_features.yaml --modality text --output-dir runs/edaic/classification/compact_speech/main
+python -m src.train_edaic_features --config configs/baseline_edaic_compact_speech_features.yaml --modality audio --output-dir runs/edaic/classification/compact_speech/main
+python -m src.train_edaic_features --config configs/baseline_edaic_compact_speech_features.yaml --modality both --output-dir runs/edaic/classification/compact_speech/main
+
+
+# 20. Class-weight ablation for timestamp-filtered compact speech both
+python -m src.train_edaic_features --config configs/baseline_edaic_compact_speech_features.yaml --modality both --use-class-weights true --output-dir runs/edaic/classification/compact_speech/class_weight_true
+python -m src.train_edaic_features --config configs/baseline_edaic_compact_speech_features.yaml --modality both --use-class-weights false --output-dir runs/edaic/classification/compact_speech/class_weight_false

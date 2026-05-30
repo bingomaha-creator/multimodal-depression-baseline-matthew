@@ -31,6 +31,6 @@ training:
   weight_decay: 1.0e-4
   use_class_weights: true
   device: cuda
-  output_dir: outputs_edaic_text_audio_chunk_features_20s12
+  output_dir: runs/edaic/classification/text_audio_chunk_20s12/main
   monitor_metric: f1
   max_train_steps:

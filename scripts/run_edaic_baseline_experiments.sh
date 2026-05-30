@@ -37,17 +37,17 @@ echo "== Plain 320000 baseline: text/audio/both =="
 python -m src.train_edaic_features \
   --config "${PLAIN_CONFIG}" \
   --modality text \
-  --output-dir outputs_edaic_features_320000_baseline
+  --output-dir runs/edaic/classification/plain_320000/main
 
 python -m src.train_edaic_features \
   --config "${PLAIN_CONFIG}" \
   --modality audio \
-  --output-dir outputs_edaic_features_320000_baseline
+  --output-dir runs/edaic/classification/plain_320000/main
 
 python -m src.train_edaic_features \
   --config "${PLAIN_CONFIG}" \
   --modality both \
-  --output-dir outputs_edaic_features_320000_baseline
+  --output-dir runs/edaic/classification/plain_320000/main
 
 echo
 echo "== Plain 320000 both: seed stability =="
@@ -58,13 +58,13 @@ for seed in 42 3407 2025; do
     --config "${PLAIN_CONFIG}" \
     --modality both \
     --seed "${seed}" \
-    --output-dir "outputs_edaic_features_320000_seed${seed}"
+    --output-dir "runs/edaic/classification/plain_320000/seed_${seed}"
 done
 
 python scripts/summarize_edaic_feature_runs.py \
-  outputs_edaic_features_320000_seed42/both \
-  outputs_edaic_features_320000_seed3407/both \
-  outputs_edaic_features_320000_seed2025/both
+  runs/edaic/classification/plain_320000/seed_42/both \
+  runs/edaic/classification/plain_320000/seed_3407/both \
+  runs/edaic/classification/plain_320000/seed_2025/both
 
 echo
 echo "== Plain 320000 both: class-weight ablation =="
@@ -74,13 +74,13 @@ python -m src.train_edaic_features \
   --config "${PLAIN_CONFIG}" \
   --modality both \
   --use-class-weights true \
-  --output-dir outputs_edaic_features_320000_class_weights_true
+  --output-dir runs/edaic/classification/plain_320000/class_weight_true
 
 python -m src.train_edaic_features \
   --config "${PLAIN_CONFIG}" \
   --modality both \
   --use-class-weights false \
-  --output-dir outputs_edaic_features_320000_class_weights_false
+  --output-dir runs/edaic/classification/plain_320000/class_weight_false
 
 echo
 echo "== Plain 320000 both: small hyperparameter checks =="
@@ -93,7 +93,7 @@ for lr in 5.0e-5 1.0e-4 3.0e-4; do
     --learning-rate "${lr}" \
     --dropout 0.1 \
     --hidden-dim 256 \
-    --output-dir "outputs_edaic_features_320000_lr${lr}_dropout0.1_hidden256"
+    --output-dir "runs/edaic/classification/plain_320000/lr_${lr}_dropout_0.1_hidden_256"
 done
 
 for dropout in 0.1 0.3; do
@@ -103,7 +103,7 @@ for dropout in 0.1 0.3; do
     --learning-rate 1.0e-4 \
     --dropout "${dropout}" \
     --hidden-dim 256 \
-    --output-dir "outputs_edaic_features_320000_lr1e-4_dropout${dropout}_hidden256"
+    --output-dir "runs/edaic/classification/plain_320000/lr_1e-4_dropout_${dropout}_hidden_256"
 done
 
 for hidden_dim in 128 256; do
@@ -113,7 +113,7 @@ for hidden_dim in 128 256; do
     --learning-rate 1.0e-4 \
     --dropout 0.1 \
     --hidden-dim "${hidden_dim}" \
-    --output-dir "outputs_edaic_features_320000_lr1e-4_dropout0.1_hidden${hidden_dim}"
+    --output-dir "runs/edaic/classification/plain_320000/lr_1e-4_dropout_0.1_hidden_${hidden_dim}"
 done
 
 echo
@@ -135,12 +135,12 @@ echo "== Text chunk baseline: text/both =="
 python -m src.train_edaic_features \
   --config "${CHUNK_CONFIG}" \
   --modality text \
-  --output-dir outputs_edaic_text_chunk_features_320000
+  --output-dir runs/edaic/classification/text_chunk_320000/main
 
 python -m src.train_edaic_features \
   --config "${CHUNK_CONFIG}" \
   --modality both \
-  --output-dir outputs_edaic_text_chunk_features_320000
+  --output-dir runs/edaic/classification/text_chunk_320000/main
 
 echo
 echo "== Text chunk + uniform audio chunk feature extraction =="
@@ -159,17 +159,17 @@ echo "== Text chunk + uniform audio chunk baseline: text/audio/both =="
 python -m src.train_edaic_features \
   --config "${TEXT_AUDIO_CHUNK_CONFIG}" \
   --modality text \
-  --output-dir outputs_edaic_text_audio_chunk_features_20s12
+  --output-dir runs/edaic/classification/text_audio_chunk_20s12/main
 
 python -m src.train_edaic_features \
   --config "${TEXT_AUDIO_CHUNK_CONFIG}" \
   --modality audio \
-  --output-dir outputs_edaic_text_audio_chunk_features_20s12
+  --output-dir runs/edaic/classification/text_audio_chunk_20s12/main
 
 python -m src.train_edaic_features \
   --config "${TEXT_AUDIO_CHUNK_CONFIG}" \
   --modality both \
-  --output-dir outputs_edaic_text_audio_chunk_features_20s12
+  --output-dir runs/edaic/classification/text_audio_chunk_20s12/main
 
 echo
 echo "== Text chunk + uniform audio chunk both: class-weight ablation =="
@@ -177,20 +177,16 @@ python -m src.train_edaic_features \
   --config "${TEXT_AUDIO_CHUNK_CONFIG}" \
   --modality both \
   --use-class-weights true \
-  --output-dir outputs_edaic_text_audio_chunk_features_20s12_class_weights_true
+  --output-dir runs/edaic/classification/text_audio_chunk_20s12/class_weight_true
 
 python -m src.train_edaic_features \
   --config "${TEXT_AUDIO_CHUNK_CONFIG}" \
   --modality both \
   --use-class-weights false \
-  --output-dir outputs_edaic_text_audio_chunk_features_20s12_class_weights_false
+  --output-dir runs/edaic/classification/text_audio_chunk_20s12/class_weight_false
 
 echo
 echo "Done. Main outputs:"
-echo "- outputs_edaic_features_320000_baseline"
-echo "- outputs_edaic_features_320000_seed*"
-echo "- outputs_edaic_features_320000_class_weights_*"
-echo "- outputs_edaic_features_320000_lr*"
-echo "- outputs_edaic_text_chunk_features_320000"
-echo "- outputs_edaic_text_audio_chunk_features_20s12"
-echo "- outputs_edaic_text_audio_chunk_features_20s12_class_weights_*"
+echo "- runs/edaic/classification/plain_320000"
+echo "- runs/edaic/classification/text_chunk_320000"
+echo "- runs/edaic/classification/text_audio_chunk_20s12"

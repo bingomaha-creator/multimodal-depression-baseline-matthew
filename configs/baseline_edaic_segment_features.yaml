@@ -37,6 +37,6 @@ training:
   weight_decay: 1.0e-4
   use_class_weights: true
   device: cuda
-  output_dir: outputs_edaic_segment_features
+  output_dir: runs/edaic/classification/segment_20s/main
   monitor_metric: f1
   max_train_steps:

@@ -2,16 +2,23 @@ seed: 42
 
 data:
   manifest_path: /home/rui/24zbma/code/multimodal-depression-baseline-matthew/scripts/data/edaic_manifest.csv
-  feature_cache_path: data/edaic_features_320000.pt
+  feature_cache_path: data/edaic_compact_speech_features.pt
   id_column: participant_id
   label_column: label
   phq_column: phq_score
   split_column: split
   text_column: transcript_path
   audio_column: audio_path
+  start_time_column: Start_Time
+  end_time_column: End_Time
   transcript_text_column: Text
+  confidence_column: Confidence
   sample_rate: 16000
-  max_audio_length: 320000
+  max_raw_segment_seconds: 30
+  max_audio_chunk_seconds: 20
+  min_audio_chunk_seconds: 1
+  max_text_chunk_tokens: 256
+  max_chunks: 30
   max_text_length: 512
   num_workers: 0
 
@@ -29,6 +36,6 @@ training:
   weight_decay: 1.0e-4
   use_class_weights: true
   device: cuda
-  output_dir: runs/edaic/classification/plain_320000/main
+  output_dir: runs/edaic/classification/compact_speech/main
   monitor_metric: f1
   max_train_steps:

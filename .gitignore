@@ -6,11 +6,10 @@ __pycache__/
 .DS_Store
 
 edaic_manual_commands.txt
+多模态抑郁检测数据集样本结构说明.docx
 
 data/
-outputs/
 checkpoints/
-runs/
 wandb/
 
 .env

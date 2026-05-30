@@ -28,6 +28,6 @@ training:
   weight_decay: 0.0
   use_class_weights: true
   device: cuda
-  output_dir: outputs
+  output_dir: runs/edaic/end_to_end/roberta_wav2vec
   monitor_metric: f1
   max_train_steps:

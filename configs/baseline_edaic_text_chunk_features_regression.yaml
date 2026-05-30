@@ -33,6 +33,6 @@ training:
   use_regression_weights: true
   positive_weight: auto
   device: cuda
-  output_dir: outputs_edaic_text_chunk_features_320000_regression_v2
+  output_dir: runs/edaic/regression/text_chunk_320000/v2
   monitor_metric: mae
   max_train_steps:
