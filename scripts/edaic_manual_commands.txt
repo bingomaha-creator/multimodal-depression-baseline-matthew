@@ -138,3 +138,22 @@ python -m src.train_edaic_features --config configs/baseline_edaic_compact_speec
 # 20. Class-weight ablation for timestamp-filtered compact speech both
 python -m src.train_edaic_features --config configs/baseline_edaic_compact_speech_features.yaml --modality both --use-class-weights true --output-dir runs/edaic/classification/compact_speech/class_weight_true
 python -m src.train_edaic_features --config configs/baseline_edaic_compact_speech_features.yaml --modality both --use-class-weights false --output-dir runs/edaic/classification/compact_speech/class_weight_false
+
+
+# 21. Text chunk + compact audio feature extraction
+# Text keeps the original full-transcript token chunks.
+# Audio uses timestamp-filtered compact audio chunks only.
+# This checks whether compact audio helps without damaging the stronger text-chunk branch.
+python -m src.extract_edaic_text_chunk_compact_audio_features --config configs/baseline_edaic_text_chunk_compact_audio_features.yaml --limit 2 --output data/edaic_text_chunk_compact_audio_features_smoke.pt
+python -m src.extract_edaic_text_chunk_compact_audio_features --config configs/baseline_edaic_text_chunk_compact_audio_features.yaml
+
+
+# 22. Text chunk + compact audio baseline
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_compact_audio_features.yaml --modality text --output-dir runs/edaic/classification/text_chunk_compact_audio/main
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_compact_audio_features.yaml --modality audio --output-dir runs/edaic/classification/text_chunk_compact_audio/main
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_compact_audio_features.yaml --modality both --output-dir runs/edaic/classification/text_chunk_compact_audio/main
+
+
+# 23. Class-weight ablation for text chunk + compact audio both
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_compact_audio_features.yaml --modality both --use-class-weights true --output-dir runs/edaic/classification/text_chunk_compact_audio/class_weight_true
+python -m src.train_edaic_features --config configs/baseline_edaic_text_chunk_compact_audio_features.yaml --modality both --use-class-weights false --output-dir runs/edaic/classification/text_chunk_compact_audio/class_weight_false

@@ -103,3 +103,37 @@ def build_compact_speech_chunks(
     if len(chunks) < max_chunks:
         flush_current()
     return chunks[:max_chunks]
+
+
+def build_compact_audio_chunks(
+    pieces: Iterable[TranscriptPiece],
+    max_audio_chunk_seconds: float,
+    max_chunks: int,
+) -> List[CompactSpeechChunk]:
+    if max_audio_chunk_seconds <= 0:
+        raise ValueError("max_audio_chunk_seconds must be positive")
+    if max_chunks <= 0:
+        raise ValueError("max_chunks must be positive")
+
+    chunks: List[CompactSpeechChunk] = []
+    current: List[TranscriptPiece] = []
+
+    def flush_current() -> None:
+        if current and len(chunks) < max_chunks:
+            chunks.append(CompactSpeechChunk(pieces=tuple(current)))
+
+    for piece in pieces:
+        candidate = current + [piece]
+        candidate_audio_seconds = sum(item.duration for item in candidate)
+        should_split = bool(current) and candidate_audio_seconds > max_audio_chunk_seconds
+        if should_split:
+            flush_current()
+            current = [piece]
+            if len(chunks) >= max_chunks:
+                break
+        else:
+            current = candidate
+
+    if len(chunks) < max_chunks:
+        flush_current()
+    return chunks[:max_chunks]

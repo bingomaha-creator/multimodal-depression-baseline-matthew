@@ -2,6 +2,7 @@ import unittest
 
 from src.utils.compact_speech import (
     TranscriptPiece,
+    build_compact_audio_chunks,
     build_compact_speech_chunks,
     filter_transcript_pieces,
 )
@@ -50,6 +51,25 @@ class CompactSpeechTest(unittest.TestCase):
             "seven eight nine ten",
         ])
         self.assertEqual([round(chunk.audio_seconds, 1) for chunk in chunks], [8.0, 6.0, 1.0])
+
+    def test_audio_only_chunks_ignore_text_length(self):
+        pieces = [
+            TranscriptPiece(0.0, 2.0, "one two three four five six"),
+            TranscriptPiece(3.0, 5.0, "seven eight nine ten eleven twelve"),
+            TranscriptPiece(6.0, 8.0, "thirteen fourteen fifteen sixteen"),
+        ]
+
+        chunks = build_compact_audio_chunks(
+            pieces,
+            max_audio_chunk_seconds=4.0,
+            max_chunks=10,
+        )
+
+        self.assertEqual([chunk.text for chunk in chunks], [
+            "one two three four five six seven eight nine ten eleven twelve",
+            "thirteen fourteen fifteen sixteen",
+        ])
+        self.assertEqual([round(chunk.audio_seconds, 1) for chunk in chunks], [4.0, 2.0])
 
 
 if __name__ == "__main__":
