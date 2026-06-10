@@ -1,0 +1,126 @@
+# LMVD baseline manual command checklist
+# Run these one by one on the server from the repository root:
+#
+# cd /home/rui/24zbma/code/multimodal-depression-baseline-matthew
+#
+# Dataset directory expected by configs/baseline_lmvd.yaml:
+# /24zbma/data/LMVD/
+#   Video_feature/
+#     002.csv
+#   Audio_feature/
+#     002.npy
+#   label/
+#     002_Depression.csv
+#
+# Output directory convention:
+# - LMVD MLP baseline: runs/LMVD/mlp/main/<modality>
+# - LMVD sklearn baseline: runs/LMVD/ml/<model>/<modality>
+# - The MLP training script appends the final modality folder automatically.
+
+
+# 1. Build LMVD feature cache
+# This reads Video_feature/*.csv, Audio_feature/*.npy, and label/*_Depression.csv.
+# Video and audio temporal features are summarized with mean + std pooling.
+# Skip this if data/lmvd_features.pt already exists and the source data has not changed.
+python scripts/make_lmvd_feature_cache.py \
+  --dataset-root /24zbma/data/LMVD \
+  --output data/lmvd_features.pt
+
+
+# 2. Optional smoke test for the MLP pipeline
+# This runs only one CV fold and one train step, useful before launching the full experiment.
+# If this fails, fix the environment/data path first before running the full 10-fold commands.
+python -m src.train_lmvd_cv \
+  --config configs/baseline_lmvd.yaml \
+  --modality both \
+  --fold-limit 1 \
+  --max-train-steps 1 \
+  --output-dir runs/LMVD/mlp/smoke
+
+
+# 3. MLP feature baseline, video only
+# Uses OpenFace-style video features from Video_feature/*.csv.
+python -m src.train_lmvd_cv \
+  --config configs/baseline_lmvd.yaml \
+  --modality video
+
+
+# 4. MLP feature baseline, audio only
+# Uses released 128-dim audio features from Audio_feature/*.npy.
+python -m src.train_lmvd_cv \
+  --config configs/baseline_lmvd.yaml \
+  --modality audio
+
+
+# 5. MLP feature baseline, video + audio
+# This is the main lightweight neural baseline for LMVD released features.
+python -m src.train_lmvd_cv \
+  --config configs/baseline_lmvd.yaml \
+  --modality both
+
+
+# 6. Optional multi-seed stability for the main MLP video + audio setting
+# Run this after the first both-modality result looks reasonable.
+python -m src.train_lmvd_cv \
+  --config configs/baseline_lmvd.yaml \
+  --modality both \
+  --seed 42 \
+  --output-dir runs/LMVD/mlp/seed_42
+
+python -m src.train_lmvd_cv \
+  --config configs/baseline_lmvd.yaml \
+  --modality both \
+  --seed 3407 \
+  --output-dir runs/LMVD/mlp/seed_3407
+
+python -m src.train_lmvd_cv \
+  --config configs/baseline_lmvd.yaml \
+  --modality both \
+  --seed 2025 \
+  --output-dir runs/LMVD/mlp/seed_2025
+
+
+# 7. Optional smoke test for sklearn baselines
+# Runs Logistic Regression on video + audio for one fold only.
+python -m src.train_lmvd_ml_cv \
+  --config configs/baseline_lmvd.yaml \
+  --models logistic_regression \
+  --modality both \
+  --fold-limit 1 \
+  --output-dir runs/LMVD/ml_smoke
+
+
+# 8. Paper-style sklearn baselines, all models and all modalities
+# This runs Logistic Regression, SVM, Random Forest, and KNN.
+# Each model is evaluated on video, audio, and video + audio.
+python -m src.train_lmvd_ml_cv \
+  --config configs/baseline_lmvd.yaml
+
+
+# 9. If the full sklearn run is too slow, run one model at a time
+# SVM can be slower than the others on high-dimensional features.
+python -m src.train_lmvd_ml_cv \
+  --config configs/baseline_lmvd.yaml \
+  --models logistic_regression
+
+python -m src.train_lmvd_ml_cv \
+  --config configs/baseline_lmvd.yaml \
+  --models svm
+
+python -m src.train_lmvd_ml_cv \
+  --config configs/baseline_lmvd.yaml \
+  --models random_forest
+
+python -m src.train_lmvd_ml_cv \
+  --config configs/baseline_lmvd.yaml \
+  --models knn
+
+
+# 10. Check summary files after training
+# Main MLP summaries:
+#   runs/LMVD/mlp/main/video/metrics/cv_summary.json
+#   runs/LMVD/mlp/main/audio/metrics/cv_summary.json
+#   runs/LMVD/mlp/main/both/metrics/cv_summary.json
+#
+# Sklearn all-model summary:
+#   runs/LMVD/ml/metrics/all_cv_summaries.json

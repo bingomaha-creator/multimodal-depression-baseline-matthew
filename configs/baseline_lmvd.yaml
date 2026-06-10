@@ -1,0 +1,30 @@
+seed: 42
+
+data:
+  dataset_root: /24zbma/data/LMVD
+  video_dir: Video_feature
+  audio_dir: Audio_feature
+  label_dir: label
+  feature_cache_path: data/lmvd_features.pt
+  num_workers: 0
+
+model:
+  hidden_dim: 256
+  dropout: 0.1
+  modality: both
+
+training:
+  n_splits: 10
+  batch_size: 32
+  epochs: 50
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-4
+  use_class_weights: true
+  device: cuda
+  output_dir: runs/LMVD/mlp/main
+  monitor_metric: f1
+  max_train_steps:
+
+ml_training:
+  n_splits: 10
+  output_dir: runs/LMVD/ml
