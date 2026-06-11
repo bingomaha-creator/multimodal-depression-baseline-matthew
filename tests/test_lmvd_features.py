@@ -32,6 +32,34 @@ class LMVDFeaturePreparationTest(unittest.TestCase):
             self.assertEqual(samples[0].participant_id, "002")
             self.assertEqual(read_lmvd_label(samples[0].label_path), 1)
 
+    def test_discovers_samples_recursively_inside_feature_directories(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "Video_feature" / "part_a").mkdir(parents=True)
+            (root / "Audio_feature" / "part_a").mkdir(parents=True)
+            (root / "label" / "part_a").mkdir(parents=True)
+            (root / "Video_feature" / "part_a" / "002.csv").write_text("frame, value\n1,0.1\n", encoding="utf-8")
+            np.save(root / "Audio_feature" / "part_a" / "002.npy", np.ones((2, 3), dtype=np.float32))
+            (root / "label" / "part_a" / "002_Depression.csv").write_text("1\n", encoding="utf-8")
+
+            samples = discover_lmvd_samples(root)
+
+            self.assertEqual(len(samples), 1)
+            self.assertEqual(samples[0].participant_id, "002")
+
+    def test_empty_cache_error_reports_discovery_counts(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "Video_feature").mkdir()
+            (root / "Audio_feature").mkdir()
+            (root / "label").mkdir()
+            (root / "Video_feature" / "002.csv").write_text("frame, value\n1,0.1\n", encoding="utf-8")
+            np.save(root / "Audio_feature" / "003.npy", np.ones((2, 3), dtype=np.float32))
+            (root / "label" / "004_Depression.csv").write_text("1\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "video csv files=1.*audio npy files=1.*label csv files=1"):
+                build_feature_cache(root, root / "lmvd_features.pt", save_torch=False)
+
     def test_loads_video_and_audio_embeddings_with_mean_std_pooling(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)

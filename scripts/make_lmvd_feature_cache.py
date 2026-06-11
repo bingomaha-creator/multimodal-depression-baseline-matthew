@@ -41,6 +41,70 @@ def sort_key(participant_id: str) -> tuple[int, Any]:
     return (0, int(participant_id)) if participant_id.isdigit() else (1, participant_id)
 
 
+def collect_video_files(video_root: Path) -> Dict[str, Path]:
+    if not video_root.exists():
+        return {}
+    return {
+        path.stem: path
+        for path in video_root.rglob("*.csv")
+        if not path.name.endswith("_Depression.csv")
+    }
+
+
+def collect_audio_files(audio_root: Path) -> Dict[str, Path]:
+    if not audio_root.exists():
+        return {}
+    return {path.stem: path for path in audio_root.rglob("*.npy")}
+
+
+def collect_label_files(label_root: Path) -> Dict[str, Path]:
+    if not label_root.exists():
+        return {}
+    return {
+        path.name[: -len("_Depression.csv")]: path
+        for path in label_root.rglob("*_Depression.csv")
+    }
+
+
+def format_examples(values: List[str], limit: int = 5) -> str:
+    if not values:
+        return "[]"
+    return str(values[:limit])
+
+
+def format_discovery_error(
+    dataset_root: str | Path,
+    video_dir: str,
+    audio_dir: str,
+    label_dir: str,
+) -> str:
+    root = Path(dataset_root)
+    video_root = root / video_dir
+    audio_root = root / audio_dir
+    label_root = root / label_dir
+    video_files = collect_video_files(video_root)
+    audio_files = collect_audio_files(audio_root)
+    label_files = collect_label_files(label_root)
+    complete_ids = set(video_files) & set(audio_files) & set(label_files)
+    video_only = sorted(set(video_files) - set(audio_files) - set(label_files), key=sort_key)
+    audio_only = sorted(set(audio_files) - set(video_files) - set(label_files), key=sort_key)
+    label_only = sorted(set(label_files) - set(video_files) - set(audio_files), key=sort_key)
+
+    return (
+        f"No complete LMVD samples found under {dataset_root}. "
+        f"Expected folders: video={video_root} exists={video_root.exists()}, "
+        f"audio={audio_root} exists={audio_root.exists()}, "
+        f"label={label_root} exists={label_root.exists()}. "
+        f"Found video csv files={len(video_files)}, audio npy files={len(audio_files)}, "
+        f"label csv files={len(label_files)}, complete id overlap={len(complete_ids)}. "
+        f"Example video ids={format_examples(sorted(video_files, key=sort_key))}; "
+        f"audio ids={format_examples(sorted(audio_files, key=sort_key))}; "
+        f"label ids={format_examples(sorted(label_files, key=sort_key))}. "
+        f"Unmatched examples: video_only={format_examples(video_only)}, "
+        f"audio_only={format_examples(audio_only)}, label_only={format_examples(label_only)}."
+    )
+
+
 def discover_lmvd_samples(
     dataset_root: str | Path,
     video_dir: str = "Video_feature",
@@ -52,12 +116,9 @@ def discover_lmvd_samples(
     audio_root = root / audio_dir
     label_root = root / label_dir
 
-    video_files = {path.stem: path for path in video_root.glob("*.csv") if not path.name.endswith("_Depression.csv")}
-    audio_files = {path.stem: path for path in audio_root.glob("*.npy")}
-    label_files = {
-        path.name[: -len("_Depression.csv")]: path
-        for path in label_root.glob("*_Depression.csv")
-    }
+    video_files = collect_video_files(video_root)
+    audio_files = collect_audio_files(audio_root)
+    label_files = collect_label_files(label_root)
 
     participant_ids = sorted(
         set(video_files) & set(audio_files) & set(label_files),
@@ -140,7 +201,7 @@ def build_feature_cache(
     if limit is not None:
         samples = samples[:limit]
     if not samples:
-        raise ValueError(f"No complete LMVD samples found under {dataset_root}")
+        raise ValueError(format_discovery_error(dataset_root, video_dir, audio_dir, label_dir))
 
     items = []
     for sample in samples:
