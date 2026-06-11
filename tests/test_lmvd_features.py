@@ -133,6 +133,32 @@ class LMVDFeaturePreparationTest(unittest.TestCase):
             self.assertEqual(cache["items"][0]["label"], 1)
             self.assertTrue(output.exists())
 
+    def test_builds_feature_cache_with_aligned_video_columns(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "LMVD_Feature").mkdir()
+            (root / "label").mkdir()
+            pd.DataFrame({"frame": [1, 2], " AU01_r": [1.0, 3.0]}).to_csv(
+                root / "LMVD_Feature" / "001.csv",
+                index=False,
+            )
+            pd.DataFrame({"frame": [1, 2], " AU02_r": [2.0, 4.0]}).to_csv(
+                root / "LMVD_Feature" / "002.csv",
+                index=False,
+            )
+            np.save(root / "LMVD_Feature" / "001.npy", np.ones((2, 3), dtype=np.float32))
+            np.save(root / "LMVD_Feature" / "002.npy", np.ones((2, 3), dtype=np.float32))
+            (root / "label" / "001_Depression.csv").write_text("0\n", encoding="utf-8")
+            (root / "label" / "002_Depression.csv").write_text("1\n", encoding="utf-8")
+
+            cache = build_feature_cache(root, root / "lmvd_features.pt", save_torch=False)
+
+            self.assertEqual(cache["metadata"]["video_columns"], ["AU01_r", "AU02_r"])
+            self.assertEqual(cache["metadata"]["video_dim"], 4)
+            self.assertEqual(cache["items"][0]["video_embedding"].shape, cache["items"][1]["video_embedding"].shape)
+            self.assertTrue(np.allclose(cache["items"][0]["video_embedding"], np.array([2.0, 0.0, 1.0, 0.0])))
+            self.assertTrue(np.allclose(cache["items"][1]["video_embedding"], np.array([0.0, 3.0, 0.0, 1.0])))
+
     def test_summarize_temporal_features_rejects_empty_arrays(self):
         with self.assertRaises(ValueError):
             summarize_temporal_features(np.empty((0, 3), dtype=np.float32), source="empty.npy")

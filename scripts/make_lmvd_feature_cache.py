@@ -182,18 +182,38 @@ def summarize_temporal_features(features: np.ndarray, source: str = "features") 
     return np.concatenate([array.mean(axis=0), array.std(axis=0)], axis=0).astype(np.float32)
 
 
-def load_video_embedding(video_path: str | Path) -> np.ndarray:
+def video_feature_columns(video_path: str | Path) -> List[str]:
     frame = pd.read_csv(video_path)
     frame.columns = [str(column).strip() for column in frame.columns]
     numeric = frame.select_dtypes(include="number")
-    feature_columns = [
+    return [
         column
         for column in numeric.columns
         if column.strip().lower() not in VIDEO_METADATA_COLUMNS
     ]
+
+
+def collect_video_feature_columns(samples: List[LMVDSample]) -> List[str]:
+    columns = set()
+    for sample in samples:
+        columns.update(video_feature_columns(sample.video_path))
+    return sorted(columns)
+
+
+def load_video_embedding(video_path: str | Path, feature_columns: List[str] | None = None) -> np.ndarray:
+    frame = pd.read_csv(video_path)
+    frame.columns = [str(column).strip() for column in frame.columns]
+    numeric = frame.select_dtypes(include="number")
+    if feature_columns is None:
+        feature_columns = [
+            column
+            for column in numeric.columns
+            if column.strip().lower() not in VIDEO_METADATA_COLUMNS
+        ]
     if not feature_columns:
         raise ValueError(f"No usable numeric video feature columns found: {video_path}")
-    return summarize_temporal_features(numeric[feature_columns].to_numpy(dtype=np.float32), source=str(video_path))
+    aligned = numeric.reindex(columns=feature_columns, fill_value=0.0)
+    return summarize_temporal_features(aligned.to_numpy(dtype=np.float32), source=str(video_path))
 
 
 def load_audio_embedding(audio_path: str | Path) -> np.ndarray:
@@ -230,6 +250,10 @@ def build_feature_cache(
     if not samples:
         raise ValueError(format_discovery_error(dataset_root, video_dir, audio_dir, label_dir))
 
+    video_columns = collect_video_feature_columns(samples)
+    if not video_columns:
+        raise ValueError(f"No usable numeric video feature columns found in {dataset_root}")
+
     items = []
     for sample in samples:
         items.append(
@@ -238,7 +262,7 @@ def build_feature_cache(
                 "video_path": str(sample.video_path),
                 "audio_path": str(sample.audio_path),
                 "label_path": str(sample.label_path),
-                "video_embedding": load_video_embedding(sample.video_path),
+                "video_embedding": load_video_embedding(sample.video_path, video_columns),
                 "audio_embedding": load_audio_embedding(sample.audio_path),
                 "label": read_lmvd_label(sample.label_path),
             }
@@ -251,6 +275,7 @@ def build_feature_cache(
         "audio_dim": int(items[0]["audio_embedding"].shape[0]),
         "num_items": len(items),
         "pooling": "mean_std",
+        "video_columns": video_columns,
     }
     cache = {"metadata": metadata, "items": items}
 
