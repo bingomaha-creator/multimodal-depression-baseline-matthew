@@ -47,6 +47,35 @@ class LMVDFeaturePreparationTest(unittest.TestCase):
             self.assertEqual(len(samples), 1)
             self.assertEqual(samples[0].participant_id, "002")
 
+    def test_discovers_common_feature_directory_name_variants(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "Visual_feature").mkdir()
+            (root / "Acoustic_feature").mkdir()
+            (root / "label").mkdir()
+            (root / "Visual_feature" / "002.csv").write_text("frame, value\n1,0.1\n", encoding="utf-8")
+            np.save(root / "Acoustic_feature" / "002.npy", np.ones((2, 3), dtype=np.float32))
+            (root / "label" / "002_Depression.csv").write_text("1\n", encoding="utf-8")
+
+            samples = discover_lmvd_samples(root)
+
+            self.assertEqual(len(samples), 1)
+            self.assertEqual(samples[0].participant_id, "002")
+
+    def test_discovers_combined_lmvd_feature_directory(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "LMVD_Feature").mkdir()
+            (root / "label").mkdir()
+            (root / "LMVD_Feature" / "002.csv").write_text("frame, value\n1,0.1\n", encoding="utf-8")
+            np.save(root / "LMVD_Feature" / "002.npy", np.ones((2, 3), dtype=np.float32))
+            (root / "label" / "002_Depression.csv").write_text("1\n", encoding="utf-8")
+
+            samples = discover_lmvd_samples(root)
+
+            self.assertEqual(len(samples), 1)
+            self.assertEqual(samples[0].participant_id, "002")
+
     def test_empty_cache_error_reports_discovery_counts(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)

@@ -4,10 +4,9 @@
 # cd /home/rui/24zbma/code/multimodal-depression-baseline-matthew
 #
 # Dataset directory expected by configs/baseline_lmvd.yaml:
-# /24zbma/data/LMVD/
-#   Video_feature/
+# /home/rui/24zbma/data/LMVD/
+#   LMVD_Feature/
 #     002.csv
-#   Audio_feature/
 #     002.npy
 #   label/
 #     002_Depression.csv
@@ -19,11 +18,11 @@
 
 
 # 1. Build LMVD feature cache
-# This reads Video_feature/*.csv, Audio_feature/*.npy, and label/*_Depression.csv.
+# This reads LMVD_Feature/*.csv, LMVD_Feature/*.npy, and label/*_Depression.csv.
 # Video and audio temporal features are summarized with mean + std pooling.
 # Skip this if data/lmvd_features.pt already exists and the source data has not changed.
 python scripts/make_lmvd_feature_cache.py \
-  --dataset-root /24zbma/data/LMVD \
+  --dataset-root /home/rui/24zbma/data/LMVD \
   --output data/lmvd_features.pt
 
 
@@ -39,14 +38,14 @@ python -m src.train_lmvd_cv \
 
 
 # 3. MLP feature baseline, video only
-# Uses OpenFace-style video features from Video_feature/*.csv.
+# Uses OpenFace-style video features from LMVD_Feature/*.csv.
 python -m src.train_lmvd_cv \
   --config configs/baseline_lmvd.yaml \
   --modality video
 
 
 # 4. MLP feature baseline, audio only
-# Uses released 128-dim audio features from Audio_feature/*.npy.
+# Uses released 128-dim audio features from LMVD_Feature/*.npy.
 python -m src.train_lmvd_cv \
   --config configs/baseline_lmvd.yaml \
   --modality audio

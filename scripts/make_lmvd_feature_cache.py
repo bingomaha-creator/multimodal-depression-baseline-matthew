@@ -11,6 +11,9 @@ import pandas as pd
 
 
 VIDEO_METADATA_COLUMNS = {"frame", "face_id", "timestamp"}
+VIDEO_DIR_KEYWORDS = ("video", "visual", "openface", "feature")
+AUDIO_DIR_KEYWORDS = ("audio", "acoustic", "vggish", "feature")
+LABEL_DIR_KEYWORDS = ("label", "depression")
 
 
 @dataclass(frozen=True)
@@ -23,9 +26,9 @@ class LMVDSample:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build an LMVD feature cache from released CSV/NPY features.")
-    parser.add_argument("--dataset-root", default="/24zbma/data/LMVD", help="Root containing LMVD feature folders.")
-    parser.add_argument("--video-dir", default="Video_feature", help="Video feature subdirectory.")
-    parser.add_argument("--audio-dir", default="Audio_feature", help="Audio feature subdirectory.")
+    parser.add_argument("--dataset-root", default="/home/rui/24zbma/data/LMVD", help="Root containing LMVD feature folders.")
+    parser.add_argument("--video-dir", default="LMVD_Feature", help="Video feature subdirectory.")
+    parser.add_argument("--audio-dir", default="LMVD_Feature", help="Audio feature subdirectory.")
     parser.add_argument("--label-dir", default="label", help="Label subdirectory.")
     parser.add_argument("--output", default="data/lmvd_features.pt", help="Output cache path.")
     parser.add_argument("--limit", type=int, default=None, help="Optional sample limit for smoke tests.")
@@ -39,6 +42,30 @@ def parse_args() -> argparse.Namespace:
 
 def sort_key(participant_id: str) -> tuple[int, Any]:
     return (0, int(participant_id)) if participant_id.isdigit() else (1, participant_id)
+
+
+def directory_score(path: Path, keywords: tuple[str, ...], suffix: str) -> tuple[int, int]:
+    name = path.name.lower()
+    keyword_hits = sum(1 for keyword in keywords if keyword in name)
+    file_count = len(list(path.rglob(suffix)))
+    return keyword_hits, file_count
+
+
+def resolve_feature_dir(root: Path, preferred_dir: str, keywords: tuple[str, ...], suffix: str) -> Path:
+    preferred = root / preferred_dir
+    if preferred.exists():
+        return preferred
+    if not root.exists():
+        return preferred
+
+    candidates = [
+        path
+        for path in root.iterdir()
+        if path.is_dir() and directory_score(path, keywords, suffix)[0] > 0
+    ]
+    if not candidates:
+        return preferred
+    return max(candidates, key=lambda path: directory_score(path, keywords, suffix))
 
 
 def collect_video_files(video_root: Path) -> Dict[str, Path]:
@@ -79,9 +106,9 @@ def format_discovery_error(
     label_dir: str,
 ) -> str:
     root = Path(dataset_root)
-    video_root = root / video_dir
-    audio_root = root / audio_dir
-    label_root = root / label_dir
+    video_root = resolve_feature_dir(root, video_dir, VIDEO_DIR_KEYWORDS, "*.csv")
+    audio_root = resolve_feature_dir(root, audio_dir, AUDIO_DIR_KEYWORDS, "*.npy")
+    label_root = resolve_feature_dir(root, label_dir, LABEL_DIR_KEYWORDS, "*_Depression.csv")
     video_files = collect_video_files(video_root)
     audio_files = collect_audio_files(audio_root)
     label_files = collect_label_files(label_root)
@@ -112,9 +139,9 @@ def discover_lmvd_samples(
     label_dir: str = "label",
 ) -> List[LMVDSample]:
     root = Path(dataset_root)
-    video_root = root / video_dir
-    audio_root = root / audio_dir
-    label_root = root / label_dir
+    video_root = resolve_feature_dir(root, video_dir, VIDEO_DIR_KEYWORDS, "*.csv")
+    audio_root = resolve_feature_dir(root, audio_dir, AUDIO_DIR_KEYWORDS, "*.npy")
+    label_root = resolve_feature_dir(root, label_dir, LABEL_DIR_KEYWORDS, "*_Depression.csv")
 
     video_files = collect_video_files(video_root)
     audio_files = collect_audio_files(audio_root)

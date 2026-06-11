@@ -1,9 +1,9 @@
 seed: 42
 
 data:
-  dataset_root: /24zbma/data/LMVD
-  video_dir: Video_feature
-  audio_dir: Audio_feature
+  dataset_root: /home/rui/24zbma/data/LMVD
+  video_dir: LMVD_Feature
+  audio_dir: LMVD_Feature
   label_dir: label
   feature_cache_path: data/lmvd_features.pt
   num_workers: 0
