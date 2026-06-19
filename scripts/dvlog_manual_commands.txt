@@ -1,0 +1,185 @@
+# D-Vlog MLP + BiGRU baseline manual command checklist
+# Run these one by one on the server from the repository root:
+#
+# cd /home/rui/24zbma/code/multimodal-depression-baseline-matthew
+#
+# Dataset directory expected by configs/baseline_dvlog.yaml:
+# /home/rui/24zbma/data/D-vlog/
+#   labels.csv
+#   0_acoustic.npy
+#   0_visual.npy
+#   1_acoustic.npy
+#   1_visual.npy
+#   ...
+#
+# labels.csv must contain: index,label,duration,gender,fold
+# Official fold values are: train, valid, test
+# Expected feature shapes are:
+#   {id}_acoustic.npy: (T, 25)
+#   {id}_visual.npy:   (T, 136)
+#
+# No pretrained model download is required. These commands train the MLP and
+# BiGRU classifiers from scratch using the released D-Vlog features.
+
+
+# 0. Confirm the current revision and activate your existing server environment
+git log -2 --oneline
+git status --short
+
+# Activate the same environment used by the other repository baselines.
+# Example (replace with the actual environment name):
+# conda activate YOUR_ENV_NAME
+
+
+# 1. Confirm Python, PyTorch, CUDA, and core dependencies
+python - <<'PY'
+import numpy
+import pandas
+import sklearn
+import torch
+import yaml
+
+print("numpy:", numpy.__version__)
+print("pandas:", pandas.__version__)
+print("sklearn:", sklearn.__version__)
+print("torch:", torch.__version__)
+print("cuda available:", torch.cuda.is_available())
+print("cuda device:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU only")
+print("pyyaml:", yaml.__version__)
+PY
+
+
+# 2. Validate the complete D-Vlog release before training
+# This checks all 961 IDs, official split counts, file existence, dimensions,
+# finite values, synchronized audio/visual lengths, and visual missing frames.
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --validate-data
+
+# Expected split counts:
+#   train: 647
+#   valid: 102
+#   test:  212
+# Expected class counts:
+#   depression: 555 (internal label 1)
+#   normal:     406 (internal label 0)
+
+
+# 3. Run the D-Vlog automated tests
+pytest tests/test_dvlog_baselines.py -v
+
+
+# 4. MLP smoke test: audio + visual, one epoch and two optimizer steps
+# This verifies normalization, mean+std pooling, checkpointing, and outputs.
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model mlp \
+  --modality both \
+  --seed 42 \
+  --device cuda \
+  --epochs 1 \
+  --max-train-steps 2 \
+  --output-dir runs/D-vlog-smoke
+
+
+# 5. BiGRU smoke test: audio + visual, one epoch and two optimizer steps
+# This additionally verifies padding masks, packed sequences, and temporal pooling.
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model bigru \
+  --modality both \
+  --seed 42 \
+  --device cuda \
+  --epochs 1 \
+  --max-train-steps 2 \
+  --output-dir runs/D-vlog-smoke
+
+
+# 6. Check smoke-test outputs
+cat runs/D-vlog-smoke/mlp/both/seed_42/metrics/valid_metrics_at_0_5.json
+cat runs/D-vlog-smoke/mlp/both/seed_42/metrics/test_metrics_at_0_5.json
+cat runs/D-vlog-smoke/bigru/both/seed_42/metrics/valid_metrics_at_0_5.json
+cat runs/D-vlog-smoke/bigru/both/seed_42/metrics/test_metrics_at_0_5.json
+
+
+# 7. Optional first complete seed: MLP, all modality settings
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model mlp \
+  --modality audio \
+  --seed 42 \
+  --device cuda
+
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model mlp \
+  --modality visual \
+  --seed 42 \
+  --device cuda
+
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model mlp \
+  --modality both \
+  --seed 42 \
+  --device cuda
+
+
+# 8. Optional first complete seed: BiGRU, all modality settings
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model bigru \
+  --modality audio \
+  --seed 42 \
+  --device cuda
+
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model bigru \
+  --modality visual \
+  --seed 42 \
+  --device cuda
+
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model bigru \
+  --modality both \
+  --seed 42 \
+  --device cuda
+
+
+# 9. Run the complete experiment suite
+# Runs:
+#   2 models (MLP, BiGRU)
+# x 3 modalities (audio, visual, both)
+# x 3 seeds (42, 2025, 3407)
+# = 18 experiments
+#
+# The runner stops on the first failed command and generates the summary only
+# after every expected run is present.
+bash scripts/run_dvlog_baselines.sh configs/baseline_dvlog.yaml cuda
+
+
+# 10. Regenerate the final summary without retraining
+python scripts/summarize_dvlog_runs.py \
+  --runs-root runs/D-vlog \
+  --seeds 42 2025 3407
+
+
+# 11. Inspect final summary files
+cat runs/D-vlog/metrics/dvlog_baselines_summary.md
+
+# Machine-readable version:
+# runs/D-vlog/metrics/dvlog_baselines_summary.csv
+
+
+# 12. Output layout for each seed-level run
+# runs/D-vlog/{mlp|bigru}/{audio|visual|both}/seed_{seed}/
+#   checkpoints/best.pt
+#   metrics/valid_metrics_at_0_5.json
+#   metrics/test_metrics_at_0_5.json
+#   predictions/valid_predictions_at_0_5.csv
+#   predictions/test_predictions_at_0_5.csv
+#
+# The fixed 0.5 threshold is the primary result. Validation F1 selects the
+# best epoch. Test labels are not used for checkpoint or threshold selection.

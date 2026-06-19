@@ -243,6 +243,97 @@ python -m src.train_modma_cv --config configs/baseline_modma.yaml --modality aud
 python -m src.train_modma_cv --config configs/baseline_modma.yaml --modality both
 ```
 
+## D-Vlog MLP and BiGRU Baselines
+
+D-Vlog uses released, time-aligned features rather than raw media:
+
+```text
+/home/rui/24zbma/data/D-vlog/
+  labels.csv
+  0_acoustic.npy
+  0_visual.npy
+  1_acoustic.npy
+  1_visual.npy
+  ...
+```
+
+The acoustic arrays have shape `(T, 25)`, the visual arrays have shape `(T, 136)`, and `labels.csv` supplies the official `train`, `valid`, and `test` folds. The baseline never uses `duration` or `gender` as model inputs.
+
+On the server, first validate all 961 samples, feature dimensions, finite values, synchronized sequence lengths, and official split counts:
+
+```bash
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --validate-data
+```
+
+Run the D-Vlog unit tests in the server environment:
+
+```bash
+pytest tests/test_dvlog_baselines.py -v
+```
+
+For a step-by-step server checklist, follow `scripts/dvlog_manual_commands.txt`.
+
+Run short MLP and BiGRU smoke tests before launching the full suite:
+
+```bash
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model mlp \
+  --modality both \
+  --seed 42 \
+  --device cuda \
+  --epochs 1 \
+  --max-train-steps 2
+
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model bigru \
+  --modality both \
+  --seed 42 \
+  --device cuda \
+  --epochs 1 \
+  --max-train-steps 2
+```
+
+Run one complete setting with:
+
+```bash
+python -m src.train_dvlog \
+  --config configs/baseline_dvlog.yaml \
+  --model bigru \
+  --modality both \
+  --seed 42 \
+  --device cuda
+```
+
+Run all 18 experiments (MLP/BiGRU x audio/visual/both x three seeds) and generate the final summary:
+
+```bash
+bash scripts/run_dvlog_baselines.sh configs/baseline_dvlog.yaml cuda
+```
+
+Each seed-level run is stored under:
+
+```text
+runs/D-vlog/{mlp|bigru}/{audio|visual|both}/seed_{seed}/
+  checkpoints/best.pt
+  metrics/valid_metrics_at_0_5.json
+  metrics/test_metrics_at_0_5.json
+  predictions/valid_predictions_at_0_5.csv
+  predictions/test_predictions_at_0_5.csv
+```
+
+Combined mean and population-standard-deviation results are written to:
+
+```text
+runs/D-vlog/metrics/dvlog_baselines_summary.csv
+runs/D-vlog/metrics/dvlog_baselines_summary.md
+```
+
+The fixed `0.5` threshold is the primary result. Validation F1 selects the best epoch; test labels are never used for checkpoint selection.
+
 ## Optional Checkpoint Evaluation
 
 The main training flow already tests the best checkpoint. The separate evaluator is only for later checkpoint inspection:

@@ -1,0 +1,23 @@
+seed: 42
+seeds: [42, 2025, 3407]
+
+data:
+  dataset_root: /home/rui/24zbma/data/D-vlog
+  num_workers: 0
+  cache_in_memory: true
+
+model:
+  projection_dim: 128
+  gru_hidden_dim: 128
+  classifier_dim: 256
+  dropout: 0.2
+
+training:
+  batch_size: 16
+  epochs: 120
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-4
+  early_stopping_patience: 15
+  use_class_weights: true
+  device: auto
+  output_dir: runs/D-vlog
