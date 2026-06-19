@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict
 
 import numpy as np
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score
 
 
 def classification_metrics(labels: np.ndarray, predictions: np.ndarray) -> Dict[str, float]:
@@ -12,6 +12,27 @@ def classification_metrics(labels: np.ndarray, predictions: np.ndarray) -> Dict[
         "precision": float(precision_score(labels, predictions, zero_division=0)),
         "recall": float(recall_score(labels, predictions, zero_division=0)),
         "f1": float(f1_score(labels, predictions, zero_division=0)),
+    }
+
+
+def detailed_classification_metrics(labels: np.ndarray, predictions: np.ndarray) -> Dict[str, object]:
+    """同时计算正类 binary 指标、weighted 指标和混淆矩阵。
+
+    保留 ``acc``，并给两种平均方式添加明确前缀，避免汇报时把 binary F1 误写成
+    LMVD 论文使用的 weighted F1。混淆矩阵固定标签顺序为 ``[0, 1]``。
+    """
+
+    labels = np.asarray(labels, dtype=int)
+    predictions = np.asarray(predictions, dtype=int)
+    return {
+        "acc": float(accuracy_score(labels, predictions)),
+        "binary_precision": float(precision_score(labels, predictions, average="binary", zero_division=0)),
+        "binary_recall": float(recall_score(labels, predictions, average="binary", zero_division=0)),
+        "binary_f1": float(f1_score(labels, predictions, average="binary", zero_division=0)),
+        "weighted_precision": float(precision_score(labels, predictions, average="weighted", zero_division=0)),
+        "weighted_recall": float(recall_score(labels, predictions, average="weighted", zero_division=0)),
+        "weighted_f1": float(f1_score(labels, predictions, average="weighted", zero_division=0)),
+        "confusion_matrix": confusion_matrix(labels, predictions, labels=[0, 1]).astype(int).tolist(),
     }
 
 

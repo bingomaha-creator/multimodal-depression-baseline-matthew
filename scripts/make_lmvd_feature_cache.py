@@ -1,5 +1,18 @@
 from __future__ import annotations
 
+"""把 LMVD 官方发布的逐帧特征整理成可直接训练的定长缓存。
+
+LMVD 发布的是每个样本一份视频 CSV 和一份音频 NPY。不同样本的时间长度不同，
+不能直接组成批次，因此本脚本分别在时间维上计算 mean 和 std，再将二者拼接：
+
+    视频: [T_video, D_video] -> [2 * D_video]
+    音频: [T_audio, D_audio] -> [2 * D_audio]
+
+视频 CSV 还存在列集合不完全一致的问题。脚本先收集所有样本出现过的数值特征列，
+再按列名重排每个样本；缺失列补 0。这里的“对齐”只统一维度及列的语义，不会修改
+原始 CSV。最终缓存同时供 PyTorch MLP 和 sklearn 传统机器学习基线使用。
+"""
+
 import argparse
 import pickle
 from dataclasses import dataclass
@@ -11,6 +24,8 @@ import pandas as pd
 
 
 VIDEO_METADATA_COLUMNS = {"frame", "face_id", "timestamp"}
+# 当配置中的目录名不存在时，用这些关键词在数据根目录下寻找最可能的目录。
+# "feature" 同时属于视频和音频关键词，是为了兼容二者放在 LMVD_Feature/ 的发布结构。
 VIDEO_DIR_KEYWORDS = ("video", "visual", "openface", "feature")
 AUDIO_DIR_KEYWORDS = ("audio", "acoustic", "vggish", "feature")
 LABEL_DIR_KEYWORDS = ("label", "depression")
@@ -18,6 +33,8 @@ LABEL_DIR_KEYWORDS = ("label", "depression")
 
 @dataclass(frozen=True)
 class LMVDSample:
+    """一个完整 LMVD 样本的三类文件路径；participant_id 是三者配对键。"""
+
     participant_id: str
     video_path: Path
     audio_path: Path
@@ -25,6 +42,8 @@ class LMVDSample:
 
 
 def parse_args() -> argparse.Namespace:
+    """解析缓存构建参数；目录参数都是相对 ``dataset-root`` 的子目录名。"""
+
     parser = argparse.ArgumentParser(description="Build an LMVD feature cache from released CSV/NPY features.")
     parser.add_argument("--dataset-root", default="/home/rui/24zbma/data/LMVD", help="Root containing LMVD feature folders.")
     parser.add_argument("--video-dir", default="LMVD_Feature", help="Video feature subdirectory.")
@@ -41,10 +60,14 @@ def parse_args() -> argparse.Namespace:
 
 
 def sort_key(participant_id: str) -> tuple[int, Any]:
+    """让纯数字 ID 按数值排序，同时兼容未来可能出现的非数字 ID。"""
+
     return (0, int(participant_id)) if participant_id.isdigit() else (1, participant_id)
 
 
 def directory_score(path: Path, keywords: tuple[str, ...], suffix: str) -> tuple[int, int]:
+    """按“目录名关键词命中数、目标文件数”给候选目录评分。"""
+
     name = path.name.lower()
     keyword_hits = sum(1 for keyword in keywords if keyword in name)
     file_count = len(list(path.rglob(suffix)))
@@ -52,6 +75,12 @@ def directory_score(path: Path, keywords: tuple[str, ...], suffix: str) -> tuple
 
 
 def resolve_feature_dir(root: Path, preferred_dir: str, keywords: tuple[str, ...], suffix: str) -> Path:
+    """优先使用显式配置目录，不存在时再自动发现最合适的一级子目录。
+
+    返回不存在的 preferred 路径而不是立即报错，是为了让后续诊断信息能同时展示
+    视频、音频、标签三个目录的存在状态和文件数量。
+    """
+
     preferred = root / preferred_dir
     if preferred.exists():
         return preferred
@@ -69,6 +98,8 @@ def resolve_feature_dir(root: Path, preferred_dir: str, keywords: tuple[str, ...
 
 
 def collect_video_files(video_root: Path) -> Dict[str, Path]:
+    """递归收集视频 CSV，返回 ``participant_id -> 文件路径``。"""
+
     if not video_root.exists():
         return {}
     return {
@@ -79,12 +110,16 @@ def collect_video_files(video_root: Path) -> Dict[str, Path]:
 
 
 def collect_audio_files(audio_root: Path) -> Dict[str, Path]:
+    """递归收集音频 NPY，文件名（不含扩展名）即 participant_id。"""
+
     if not audio_root.exists():
         return {}
     return {path.stem: path for path in audio_root.rglob("*.npy")}
 
 
 def collect_label_files(label_root: Path) -> Dict[str, Path]:
+    """收集 ``{id}_Depression.csv``，并去掉固定后缀得到 participant_id。"""
+
     if not label_root.exists():
         return {}
     return {
@@ -94,6 +129,8 @@ def collect_label_files(label_root: Path) -> Dict[str, Path]:
 
 
 def format_examples(values: List[str], limit: int = 5) -> str:
+    """限制错误信息中的示例数量，避免 1800 多个 ID 全部打印出来。"""
+
     if not values:
         return "[]"
     return str(values[:limit])
@@ -105,6 +142,8 @@ def format_discovery_error(
     audio_dir: str,
     label_dir: str,
 ) -> str:
+    """生成样本发现失败时的完整诊断信息，帮助定位目录名或文件配对问题。"""
+
     root = Path(dataset_root)
     video_root = resolve_feature_dir(root, video_dir, VIDEO_DIR_KEYWORDS, "*.csv")
     audio_root = resolve_feature_dir(root, audio_dir, AUDIO_DIR_KEYWORDS, "*.npy")
@@ -138,6 +177,12 @@ def discover_lmvd_samples(
     audio_dir: str = "Audio_feature",
     label_dir: str = "label",
 ) -> List[LMVDSample]:
+    """发现同时具备视频、音频和标签的完整样本。
+
+    三类文件分别建立 ID 索引后取交集，因此缺少任意一种文件的 ID 都不会进入缓存。
+    该函数只发现和配对文件，不读取特征内容。
+    """
+
     root = Path(dataset_root)
     video_root = resolve_feature_dir(root, video_dir, VIDEO_DIR_KEYWORDS, "*.csv")
     audio_root = resolve_feature_dir(root, audio_dir, AUDIO_DIR_KEYWORDS, "*.npy")
@@ -163,6 +208,12 @@ def discover_lmvd_samples(
 
 
 def read_lmvd_label(label_path: str | Path) -> int:
+    """读取 LMVD 标签。
+
+    官方标签文件把 0/1 写在 CSV 的第一列表头，而不是数据行中，所以这里只读取表头。
+    ``float -> int`` 用于兼容表头写成 ``0.0`` 或 ``1.0`` 的情况。
+    """
+
     columns = pd.read_csv(label_path, nrows=0).columns.tolist()
     if not columns:
         raise ValueError(f"Label file has no header: {label_path}")
@@ -170,6 +221,13 @@ def read_lmvd_label(label_path: str | Path) -> int:
 
 
 def summarize_temporal_features(features: np.ndarray, source: str = "features") -> np.ndarray:
+    """在时间维做 mean+std 池化，把变长序列转换为定长一维向量。
+
+    输入通常是 ``[时间步, 特征维]``。一维输入视作只有一个时间步；三维及以上输入
+    保留第一维为时间维，其余维度展平。NaN/Inf 在统计前替换为 0，避免污染整个向量。
+    输出顺序固定为 ``[每维均值, 每维标准差]``。
+    """
+
     array = np.asarray(features, dtype=np.float32)
     if array.size == 0 or array.shape[0] == 0:
         raise ValueError(f"Empty temporal feature array: {source}")
@@ -183,6 +241,8 @@ def summarize_temporal_features(features: np.ndarray, source: str = "features") 
 
 
 def video_feature_columns(video_path: str | Path) -> List[str]:
+    """读取单个视频 CSV 中可用于建模的数值特征列名。"""
+
     frame = pd.read_csv(video_path)
     frame.columns = [str(column).strip() for column in frame.columns]
     numeric = frame.select_dtypes(include="number")
@@ -194,6 +254,12 @@ def video_feature_columns(video_path: str | Path) -> List[str]:
 
 
 def collect_video_feature_columns(samples: List[LMVDSample]) -> List[str]:
+    """构建全数据统一的视频列空间。
+
+    这里只读取列名和 dtype，不使用标签，也不计算任何特征统计量。使用所有样本的列名
+    属于 schema 对齐，不会把验证折的数值均值或方差泄漏给训练折。
+    """
+
     columns = set()
     for sample in samples:
         columns.update(video_feature_columns(sample.video_path))
@@ -201,6 +267,12 @@ def collect_video_feature_columns(samples: List[LMVDSample]) -> List[str]:
 
 
 def load_video_embedding(video_path: str | Path, feature_columns: List[str] | None = None) -> np.ndarray:
+    """按统一列顺序加载视频特征，并生成 mean+std 定长表示。
+
+    ``reindex`` 按列名对齐，而不是按原 CSV 中的位置对齐。某个样本缺少的列填 0；
+    多出的列在传入统一 ``feature_columns`` 时不会进入结果。原始文件不会被写回。
+    """
+
     frame = pd.read_csv(video_path)
     frame.columns = [str(column).strip() for column in frame.columns]
     numeric = frame.select_dtypes(include="number")
@@ -217,10 +289,14 @@ def load_video_embedding(video_path: str | Path, feature_columns: List[str] | No
 
 
 def load_audio_embedding(audio_path: str | Path) -> np.ndarray:
+    """安全加载音频 NPY，并在时间维上生成 mean+std 定长表示。"""
+
     return summarize_temporal_features(np.load(audio_path, allow_pickle=False), source=str(audio_path))
 
 
 def tensorize_cache(cache: Dict[str, Any]) -> Dict[str, Any]:
+    """把 NumPy 特征转为 CPU float Tensor，供 ``torch.save`` 和 Dataset 直接使用。"""
+
     import torch
 
     items = []
@@ -244,16 +320,25 @@ def build_feature_cache(
     limit: int | None = None,
     save_torch: bool = True,
 ) -> Dict[str, Any]:
+    """执行完整缓存构建流程并写入磁盘。
+
+    流程为：发现完整样本 -> 可选截断 -> 建立统一视频列 -> 逐样本读取和池化 ->
+    记录元数据 -> 使用 torch.save 或 pickle 保存。返回的 cache 便于测试和交互检查；
+    写入 torch 文件时，磁盘版本中的 embedding 是 Tensor，返回值仍是 NumPy 数组。
+    """
+
     samples = discover_lmvd_samples(dataset_root, video_dir=video_dir, audio_dir=audio_dir, label_dir=label_dir)
     if limit is not None:
         samples = samples[:limit]
     if not samples:
         raise ValueError(format_discovery_error(dataset_root, video_dir, audio_dir, label_dir))
 
+    # 必须先确定统一列空间，再处理任何一个视频；否则不同 CSV 会得到不同向量长度。
     video_columns = collect_video_feature_columns(samples)
     if not video_columns:
         raise ValueError(f"No usable numeric video feature columns found in {dataset_root}")
 
+    # 每个 item 对应一个参与者。路径一并保存，方便后续追溯异常样本。
     items = []
     for sample in samples:
         items.append(
@@ -268,6 +353,7 @@ def build_feature_cache(
             }
         )
 
+    # metadata 是训练脚本构建模型输入层和解释缓存所需的全局信息。
     metadata = {
         "dataset": "LMVD",
         "dataset_root": str(Path(dataset_root)),
@@ -296,6 +382,8 @@ def build_feature_cache(
 
 
 def main() -> None:
+    """命令行入口。"""
+
     args = parse_args()
     build_feature_cache(
         dataset_root=args.dataset_root,
