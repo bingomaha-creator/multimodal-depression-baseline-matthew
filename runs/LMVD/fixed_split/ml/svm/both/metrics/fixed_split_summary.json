@@ -1,0 +1,95 @@
+{
+  "mode": "fixed_split",
+  "model": "svm",
+  "modality": "both",
+  "split_counts": {
+    "train": 1458,
+    "valid": 182,
+    "test": 183
+  },
+  "selected_threshold": 0.41000000000000003,
+  "valid_at_0_5": {
+    "acc": 0.8131868131868132,
+    "binary_precision": 0.8021978021978022,
+    "binary_recall": 0.8202247191011236,
+    "binary_f1": 0.8111111111111112,
+    "weighted_precision": 0.8134283299118463,
+    "weighted_recall": 0.8131868131868132,
+    "weighted_f1": 0.813209375165897,
+    "confusion_matrix": [
+      [
+        75,
+        18
+      ],
+      [
+        16,
+        73
+      ]
+    ],
+    "threshold": 0.5,
+    "pred_pos_rate": 0.5
+  },
+  "valid_with_threshold": {
+    "acc": 0.8076923076923077,
+    "binary_precision": 0.77,
+    "binary_recall": 0.8651685393258427,
+    "binary_f1": 0.8148148148148148,
+    "weighted_precision": 0.8127485928705441,
+    "weighted_recall": 0.8076923076923077,
+    "weighted_f1": 0.8072446072446072,
+    "confusion_matrix": [
+      [
+        70,
+        23
+      ],
+      [
+        12,
+        77
+      ]
+    ],
+    "threshold": 0.41000000000000003,
+    "pred_pos_rate": 0.5494505494505495
+  },
+  "test_at_0_5": {
+    "acc": 0.7486338797814208,
+    "binary_precision": 0.7419354838709677,
+    "binary_recall": 0.7582417582417582,
+    "binary_f1": 0.75,
+    "weighted_precision": 0.7487827330238752,
+    "weighted_recall": 0.7486338797814208,
+    "weighted_f1": 0.7486188674713264,
+    "confusion_matrix": [
+      [
+        68,
+        24
+      ],
+      [
+        22,
+        69
+      ]
+    ],
+    "threshold": 0.5,
+    "pred_pos_rate": 0.5081967213114754
+  },
+  "test_with_threshold": {
+    "acc": 0.7650273224043715,
+    "binary_precision": 0.74,
+    "binary_recall": 0.8131868131868132,
+    "binary_f1": 0.774869109947644,
+    "weighted_precision": 0.7677411284482191,
+    "weighted_recall": 0.7650273224043715,
+    "weighted_f1": 0.7645211733307177,
+    "confusion_matrix": [
+      [
+        66,
+        26
+      ],
+      [
+        17,
+        74
+      ]
+    ],
+    "threshold": 0.41000000000000003,
+    "pred_pos_rate": 0.546448087431694
+  }
+}
