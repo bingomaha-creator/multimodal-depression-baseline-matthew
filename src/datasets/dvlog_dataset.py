@@ -13,6 +13,7 @@ from torch.utils.data import Dataset
 
 LABEL_MAP = {"normal": 0, "depression": 1}
 VALID_SPLITS = {"train", "valid", "test"}
+MODALITIES = {"audio", "visual", "both"}
 AUDIO_DIM = 25
 VISUAL_DIM = 136
 REQUIRED_COLUMNS = {"index", "label", "duration", "gender", "fold"}
@@ -83,21 +84,35 @@ def _load_array(path: Path, expected_dim: int, modality: str, sample_id: str) ->
     return np.asarray(array, dtype=np.float32)
 
 
-def load_feature_pair(sample: DVlogSample) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    audio = _load_array(sample.acoustic_path, AUDIO_DIM, "acoustic", sample.sample_id)
+def _validate_modality(modality: str) -> None:
+    if modality not in MODALITIES:
+        raise ValueError("modality must be one of: audio, visual, both")
+
+
+def load_audio_feature(sample: DVlogSample) -> np.ndarray:
+    return _load_array(sample.acoustic_path, AUDIO_DIM, "acoustic", sample.sample_id)
+
+
+def load_visual_feature(sample: DVlogSample) -> tuple[np.ndarray, np.ndarray]:
     visual = _load_array(sample.visual_path, VISUAL_DIM, "visual", sample.sample_id)
+    return visual, np.any(visual != 0.0, axis=1)
+
+
+def load_feature_pair(sample: DVlogSample) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    audio = load_audio_feature(sample)
+    visual, visual_mask = load_visual_feature(sample)
     if audio.shape[0] != visual.shape[0]:
         raise ValueError(
             f"Cross-modal length mismatch for sample {sample.sample_id}: "
             f"acoustic={audio.shape[0]}, visual={visual.shape[0]}"
         )
-    visual_mask = np.any(visual != 0.0, axis=1)
-    if not visual_mask.any():
-        raise ValueError(f"Sample {sample.sample_id} has no valid visual frames: {sample.visual_path}")
     return audio, visual, visual_mask
 
 
-def validate_dvlog_samples(samples: Sequence[DVlogSample]) -> dict[str, Any]:
+def validate_dvlog_samples(
+    samples: Sequence[DVlogSample], modality: str = "both"
+) -> dict[str, Any]:
+    _validate_modality(modality)
     if not samples:
         raise ValueError("No D-Vlog samples were discovered")
     sample_ids = [sample.sample_id for sample in samples]
@@ -107,13 +122,25 @@ def validate_dvlog_samples(samples: Sequence[DVlogSample]) -> dict[str, Any]:
     split_counts = {split: 0 for split in ("train", "valid", "test")}
     label_counts = {0: 0, 1: 0}
     missing_visual_rows = 0
+    all_zero_visual_samples = 0
     total_rows = 0
     for sample in samples:
-        audio, _, visual_mask = load_feature_pair(sample)
+        if modality == "both":
+            audio, visual, visual_mask = load_feature_pair(sample)
+        elif modality == "audio":
+            audio = load_audio_feature(sample)
+            visual = None
+            visual_mask = None
+        else:
+            audio = None
+            visual, visual_mask = load_visual_feature(sample)
         split_counts[sample.split] += 1
         label_counts[sample.label] += 1
-        total_rows += int(audio.shape[0])
-        missing_visual_rows += int((~visual_mask).sum())
+        selected = audio if audio is not None else visual
+        total_rows += int(selected.shape[0])
+        if visual_mask is not None:
+            missing_visual_rows += int((~visual_mask).sum())
+            all_zero_visual_samples += int(not visual_mask.any())
 
     empty_splits = [split for split, count in split_counts.items() if count == 0]
     if empty_splits:
@@ -133,6 +160,7 @@ def validate_dvlog_samples(samples: Sequence[DVlogSample]) -> dict[str, Any]:
         "label_counts": label_counts,
         "total_time_steps": total_rows,
         "missing_visual_rows": missing_visual_rows,
+        "all_zero_visual_samples": all_zero_visual_samples,
     }
 
 
@@ -144,7 +172,10 @@ class FeatureNormalizer:
     visual_std: np.ndarray
 
     @classmethod
-    def fit(cls, samples: Iterable[DVlogSample]) -> "FeatureNormalizer":
+    def fit(
+        cls, samples: Iterable[DVlogSample], modality: str = "both"
+    ) -> "FeatureNormalizer":
+        _validate_modality(modality)
         audio_sum = np.zeros(AUDIO_DIM, dtype=np.float64)
         audio_sq_sum = np.zeros(AUDIO_DIM, dtype=np.float64)
         visual_sum = np.zeros(VISUAL_DIM, dtype=np.float64)
@@ -152,19 +183,35 @@ class FeatureNormalizer:
         audio_count = 0
         visual_count = 0
         for sample in samples:
-            audio, visual, visual_mask = load_feature_pair(sample)
-            valid_visual = visual[visual_mask]
-            audio_sum += audio.sum(axis=0, dtype=np.float64)
-            audio_sq_sum += np.square(audio, dtype=np.float64).sum(axis=0)
-            visual_sum += valid_visual.sum(axis=0, dtype=np.float64)
-            visual_sq_sum += np.square(valid_visual, dtype=np.float64).sum(axis=0)
-            audio_count += audio.shape[0]
-            visual_count += valid_visual.shape[0]
-        if audio_count == 0 or visual_count == 0:
-            raise ValueError("Cannot fit D-Vlog normalizer without valid training frames")
+            if modality == "both":
+                audio, visual, visual_mask = load_feature_pair(sample)
+            elif modality == "audio":
+                audio = load_audio_feature(sample)
+                visual = None
+                visual_mask = None
+            else:
+                audio = None
+                visual, visual_mask = load_visual_feature(sample)
+            if audio is not None:
+                audio_sum += audio.sum(axis=0, dtype=np.float64)
+                audio_sq_sum += np.square(audio, dtype=np.float64).sum(axis=0)
+                audio_count += audio.shape[0]
+            if visual is not None and visual_mask is not None:
+                valid_visual = visual[visual_mask]
+                visual_sum += valid_visual.sum(axis=0, dtype=np.float64)
+                visual_sq_sum += np.square(valid_visual, dtype=np.float64).sum(axis=0)
+                visual_count += valid_visual.shape[0]
 
-        audio_mean, audio_std = _mean_std(audio_sum, audio_sq_sum, audio_count)
-        visual_mean, visual_std = _mean_std(visual_sum, visual_sq_sum, visual_count)
+        audio_mean, audio_std = (
+            _mean_std(audio_sum, audio_sq_sum, audio_count)
+            if audio_count
+            else (np.zeros(AUDIO_DIM, dtype=np.float32), np.ones(AUDIO_DIM, dtype=np.float32))
+        )
+        visual_mean, visual_std = (
+            _mean_std(visual_sum, visual_sq_sum, visual_count)
+            if visual_count
+            else (np.zeros(VISUAL_DIM, dtype=np.float32), np.ones(VISUAL_DIM, dtype=np.float32))
+        )
         return cls(audio_mean, audio_std, visual_mean, visual_std)
 
     def transform_audio(self, audio: np.ndarray) -> np.ndarray:
@@ -217,13 +264,16 @@ class DVlogDataset(Dataset):
         samples: Sequence[DVlogSample],
         normalizer: FeatureNormalizer,
         representation: str,
+        modality: str = "both",
         cache_in_memory: bool = True,
     ) -> None:
         if representation not in {"pooled", "temporal"}:
             raise ValueError("representation must be one of: pooled, temporal")
+        _validate_modality(modality)
         self.samples = list(samples)
         self.normalizer = normalizer
         self.representation = representation
+        self.modality = modality
         self.cached_items = [self._load_item(sample) for sample in self.samples] if cache_in_memory else None
 
     def __len__(self) -> int:
@@ -235,7 +285,15 @@ class DVlogDataset(Dataset):
         return self._load_item(self.samples[index])
 
     def _load_item(self, sample: DVlogSample) -> dict[str, Any]:
-        audio, visual, visual_mask = load_feature_pair(sample)
+        if self.modality == "both":
+            audio, visual, visual_mask = load_feature_pair(sample)
+        elif self.modality == "audio":
+            audio = load_audio_feature(sample)
+            visual = np.zeros((audio.shape[0], VISUAL_DIM), dtype=np.float32)
+            visual_mask = np.zeros(audio.shape[0], dtype=bool)
+        else:
+            visual, visual_mask = load_visual_feature(sample)
+            audio = np.zeros((visual.shape[0], AUDIO_DIM), dtype=np.float32)
         audio = self.normalizer.transform_audio(audio)
         visual = self.normalizer.transform_visual(visual, visual_mask)
         item: dict[str, Any] = {
@@ -247,7 +305,11 @@ class DVlogDataset(Dataset):
         }
         if self.representation == "pooled":
             item["audio_embedding"] = summarize_sequence(audio)
-            item["visual_embedding"] = summarize_sequence(visual, visual_mask)
+            item["visual_embedding"] = (
+                summarize_sequence(visual, visual_mask)
+                if visual_mask.any()
+                else np.zeros(VISUAL_DIM * 2, dtype=np.float32)
+            )
         else:
             item["audio"] = audio
             item["visual"] = visual

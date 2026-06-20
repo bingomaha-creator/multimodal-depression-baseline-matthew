@@ -22,6 +22,8 @@
 #
 # No pretrained model download is required. These commands train the MLP and
 # BiGRU classifiers from scratch using the released D-Vlog features.
+# Each run reads only its selected modality. All-zero visual samples are kept
+# as zero representations and counted in all_zero_visual_samples.
 
 
 # 0. Confirm the current revision and activate your existing server environment

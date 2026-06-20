@@ -195,6 +195,7 @@ def build_loader(
     samples: Sequence[DVlogSample],
     normalizer: FeatureNormalizer,
     model_name: str,
+    modality: str,
     batch_size: int,
     shuffle: bool,
     num_workers: int,
@@ -205,6 +206,7 @@ def build_loader(
         samples,
         normalizer,
         representation=representation,
+        modality=modality,
         cache_in_memory=cache_in_memory,
     )
     collate = collate_dvlog_pooled if model_name == "mlp" else collate_dvlog_temporal
@@ -229,7 +231,7 @@ def main() -> None:
     args = parse_args()
     config = load_config(args.config)
     samples = discover_dvlog_samples(config["data"]["dataset_root"])
-    validation_summary = validate_dvlog_samples(samples)
+    validation_summary = validate_dvlog_samples(samples, modality=args.modality or "both")
     print(json.dumps(validation_summary, indent=2, ensure_ascii=False))
     if args.validate_data:
         return
@@ -242,7 +244,7 @@ def main() -> None:
     set_seed(seed)
     device = resolve_device(args.device or str(train_cfg.get("device", "auto")))
     splits = split_samples(samples)
-    normalizer = FeatureNormalizer.fit(splits["train"])
+    normalizer = FeatureNormalizer.fit(splits["train"], modality=args.modality)
     batch_size = int(train_cfg["batch_size"])
     num_workers = int(config["data"].get("num_workers", 0))
     cache_in_memory = bool(config["data"].get("cache_in_memory", True))
@@ -251,6 +253,7 @@ def main() -> None:
             values,
             normalizer,
             args.model,
+            args.modality,
             batch_size,
             shuffle=name == "train",
             num_workers=num_workers,

@@ -260,6 +260,7 @@ D-Vlog uses released, time-aligned features rather than raw media:
 ```
 
 The acoustic arrays have shape `(T, 25)`, the visual arrays have shape `(T, 136)`, and `labels.csv` supplies the official `train`, `valid`, and `test` folds. The baseline never uses `duration` or `gender` as model inputs.
+Each run reads and normalizes only its selected modality. All-zero visual samples are preserved as zero representations and reported in the validation summary rather than removed.
 
 On the server, first validate all 961 samples, feature dimensions, finite values, synchronized sequence lengths, and official split counts:
 

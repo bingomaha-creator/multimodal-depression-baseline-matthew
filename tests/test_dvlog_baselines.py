@@ -97,6 +97,50 @@ def test_visual_zero_rows_are_masked(tmp_path: Path) -> None:
     assert mask.tolist() == [True, False, True, True]
 
 
+def test_all_zero_visual_sample_is_preserved(tmp_path: Path) -> None:
+    write_dataset(tmp_path, basic_rows())
+    np.save(tmp_path / "0" / "0_visual.npy", np.zeros((4, 136), dtype=np.float32))
+    sample = discover_dvlog_samples(tmp_path)[0]
+
+    _, visual, mask = load_feature_pair(sample)
+
+    assert np.count_nonzero(visual) == 0
+    assert not mask.any()
+
+
+def test_audio_dataset_does_not_require_visual_file(tmp_path: Path) -> None:
+    write_dataset(tmp_path, basic_rows())
+    samples = discover_dvlog_samples(tmp_path)
+    (tmp_path / "0" / "0_visual.npy").unlink()
+
+    summary = validate_dvlog_samples(samples, modality="audio")
+    normalizer = FeatureNormalizer.fit([samples[0]], modality="audio")
+    dataset = DVlogDataset(
+        [samples[0]], normalizer, representation="pooled", modality="audio"
+    )
+
+    assert summary["num_samples"] == 3
+    assert dataset[0]["audio_embedding"].shape == (50,)
+    assert np.count_nonzero(dataset[0]["visual_embedding"]) == 0
+
+
+def test_visual_dataset_does_not_require_audio_and_preserves_all_zero_sample(tmp_path: Path) -> None:
+    write_dataset(tmp_path, basic_rows())
+    samples = discover_dvlog_samples(tmp_path)
+    (tmp_path / "0" / "0_acoustic.npy").unlink()
+    np.save(tmp_path / "0" / "0_visual.npy", np.zeros((4, 136), dtype=np.float32))
+
+    summary = validate_dvlog_samples(samples, modality="visual")
+    normalizer = FeatureNormalizer.fit([samples[0]], modality="visual")
+    dataset = DVlogDataset(
+        [samples[0]], normalizer, representation="pooled", modality="visual"
+    )
+
+    assert summary["all_zero_visual_samples"] == 1
+    assert np.count_nonzero(dataset[0]["audio_embedding"]) == 0
+    assert np.count_nonzero(dataset[0]["visual_embedding"]) == 0
+
+
 def test_normalizer_uses_only_passed_training_samples(tmp_path: Path) -> None:
     write_dataset(tmp_path, basic_rows())
     samples = discover_dvlog_samples(tmp_path)
