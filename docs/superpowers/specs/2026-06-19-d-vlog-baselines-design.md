@@ -15,7 +15,7 @@ The server dataset root is `/home/rui/24zbma/data/D-vlog`.
 - `labels.csv` contains 961 rows with columns `index`, `label`, `duration`, `gender`, and `fold`.
 - Sample IDs are the integers 0 through 960.
 - Each sample has `{id}/{id}_acoustic.npy` with shape `(T, 25)` and `{id}/{id}_visual.npy` with shape `(T, 136)`.
-- The two modalities must have the same `T` for a sample. A mismatch is a data error, not something to silently crop.
+- Audio and visual keep their own original `T`. Length mismatches are reported, not cropped, because fusion happens after independent pooling or encoding.
 - Labels map `normal -> 0` and `depression -> 1`.
 - Official splits contain 647 train, 102 valid, and 212 test samples.
 - `duration` and `gender` are metadata only and must not be model inputs. Gender is retained for optional subgroup reporting.
@@ -26,7 +26,7 @@ The observed sample 0 has 823 time steps for a duration of 823.31 seconds, indic
 
 All preprocessing statistics are fitted on the training split only and reused unchanged for validation and test.
 
-1. Load each array as `float32` and reject empty arrays, non-2D arrays, wrong feature dimensions, non-finite values, missing files, or cross-modal length mismatches.
+1. Load each array as `float32` and reject empty arrays, non-2D arrays, wrong feature dimensions, non-finite values, or missing files. Report cross-modal length mismatches without changing either array.
 2. Treat all-zero visual rows as missing detections. Fit visual normalization using valid visual rows only. After normalization, set missing visual rows back to zero and retain a visual-validity mask.
 3. Fit independent per-feature mean and standard deviation for audio and visual data. Clamp near-zero standard deviations to one.
 4. Never use `duration` as a feature. Sequence length remains necessary for padding masks and packed recurrent computation.
@@ -93,7 +93,7 @@ Add one YAML configuration with `/home/rui/24zbma/data/D-vlog` as the default da
 
 ## Error Handling
 
-Fail early with sample IDs and paths when a feature file is missing, an array has the wrong shape, modality lengths differ, a split or label is unknown, or a sample has no valid visual frames. Print the discovered split and class counts before training. Refuse to evaluate test data unless a validation-selected checkpoint exists.
+Fail early with sample IDs and paths when a required feature file is missing, an array has the wrong shape, or a split or label is unknown. Report modality-length differences and all-zero visual samples as summary counts without removing samples. Print the discovered split and class counts before training. Refuse to evaluate test data unless a validation-selected checkpoint exists.
 
 ## Verification
 
@@ -106,6 +106,7 @@ Automated tests will cover:
 - padded BiGRU batching and invariance to extra batch padding;
 - forward-pass shapes for all six model/modality combinations;
 - metric serialization and summary aggregation;
-- failures for missing files, wrong feature dimensions, non-finite values, and length mismatches.
+- failures for missing files, wrong feature dimensions, and non-finite values;
+- preservation and reporting of cross-modal length mismatches.
 
 Before a full server run, execute data validation and a short CPU/GPU smoke test. The full run is accepted when all 18 seed-level jobs finish, every run produces its checkpoint, metrics, and predictions, and the combined summary includes all six settings.

@@ -55,7 +55,8 @@ PY
 
 # 2. Validate the complete D-Vlog release before training
 # This checks all 961 IDs, official split counts, file existence, dimensions,
-# finite values, synchronized audio/visual lengths, and visual missing frames.
+# finite values, audio/visual lengths, and visual missing frames. Length
+# mismatches are reported but preserved; each modality is pooled independently.
 python -m src.train_dvlog \
   --config configs/baseline_dvlog.yaml \
   --validate-data

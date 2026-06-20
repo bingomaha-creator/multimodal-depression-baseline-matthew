@@ -82,7 +82,13 @@ def move_batch(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
 def forward_batch(model: nn.Module, batch: dict[str, Any], model_name: str) -> torch.Tensor:
     if model_name == "mlp":
         return model(batch["audio_embeddings"], batch["visual_embeddings"])
-    return model(batch["audio"], batch["visual"], batch["lengths"], batch["visual_mask"])
+    return model(
+        batch["audio"],
+        batch["visual"],
+        batch["audio_lengths"],
+        batch["visual_lengths"],
+        batch["visual_mask"],
+    )
 
 
 def train_one_epoch(

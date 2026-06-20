@@ -101,11 +101,6 @@ def load_visual_feature(sample: DVlogSample) -> tuple[np.ndarray, np.ndarray]:
 def load_feature_pair(sample: DVlogSample) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     audio = load_audio_feature(sample)
     visual, visual_mask = load_visual_feature(sample)
-    if audio.shape[0] != visual.shape[0]:
-        raise ValueError(
-            f"Cross-modal length mismatch for sample {sample.sample_id}: "
-            f"acoustic={audio.shape[0]}, visual={visual.shape[0]}"
-        )
     return audio, visual, visual_mask
 
 
@@ -123,6 +118,7 @@ def validate_dvlog_samples(
     label_counts = {0: 0, 1: 0}
     missing_visual_rows = 0
     all_zero_visual_samples = 0
+    length_mismatch_samples = 0
     total_rows = 0
     for sample in samples:
         if modality == "both":
@@ -141,6 +137,8 @@ def validate_dvlog_samples(
         if visual_mask is not None:
             missing_visual_rows += int((~visual_mask).sum())
             all_zero_visual_samples += int(not visual_mask.any())
+        if audio is not None and visual is not None:
+            length_mismatch_samples += int(audio.shape[0] != visual.shape[0])
 
     empty_splits = [split for split, count in split_counts.items() if count == 0]
     if empty_splits:
@@ -161,6 +159,7 @@ def validate_dvlog_samples(
         "total_time_steps": total_rows,
         "missing_visual_rows": missing_visual_rows,
         "all_zero_visual_samples": all_zero_visual_samples,
+        "length_mismatch_samples": length_mismatch_samples,
     }
 
 
@@ -301,7 +300,8 @@ class DVlogDataset(Dataset):
             "label": sample.label,
             "gender": sample.gender,
             "duration": sample.duration,
-            "length": audio.shape[0],
+            "audio_length": audio.shape[0],
+            "visual_length": visual.shape[0],
         }
         if self.representation == "pooled":
             item["audio_embedding"] = summarize_sequence(audio)
@@ -323,7 +323,8 @@ def _metadata_batch(batch: list[dict[str, Any]]) -> dict[str, Any]:
         "labels": torch.tensor([item["label"] for item in batch], dtype=torch.long),
         "gender": [item["gender"] for item in batch],
         "duration": torch.tensor([item["duration"] for item in batch], dtype=torch.float32),
-        "lengths": torch.tensor([item["length"] for item in batch], dtype=torch.long),
+        "audio_lengths": torch.tensor([item["audio_length"] for item in batch], dtype=torch.long),
+        "visual_lengths": torch.tensor([item["visual_length"] for item in batch], dtype=torch.long),
     }
 
 

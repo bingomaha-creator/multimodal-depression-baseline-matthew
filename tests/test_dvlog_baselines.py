@@ -66,13 +66,17 @@ def test_validation_reports_split_and_class_counts(tmp_path: Path) -> None:
     assert summary["label_counts"] == {0: 1, 1: 2}
 
 
-def test_load_pair_rejects_length_mismatch(tmp_path: Path) -> None:
+def test_load_pair_preserves_each_modality_length(tmp_path: Path) -> None:
     write_dataset(tmp_path, basic_rows())
     np.save(tmp_path / "0" / "0_visual.npy", np.ones((3, 136), dtype=np.float32))
     sample = discover_dvlog_samples(tmp_path)[0]
 
-    with pytest.raises(ValueError, match="length mismatch.*sample 0"):
-        load_feature_pair(sample)
+    audio, visual, _ = load_feature_pair(sample)
+
+    assert audio.shape == (4, 25)
+    assert visual.shape == (3, 136)
+    summary = validate_dvlog_samples(discover_dvlog_samples(tmp_path), modality="both")
+    assert summary["length_mismatch_samples"] == 1
 
 
 def test_load_pair_rejects_non_finite_values(tmp_path: Path) -> None:
@@ -178,6 +182,7 @@ def test_summarize_sequence_ignores_masked_rows() -> None:
 def test_collators_produce_expected_shapes(tmp_path: Path) -> None:
     rows = basic_rows()[:2]
     write_dataset(tmp_path, rows, length=3)
+    np.save(tmp_path / "0" / "0_visual.npy", np.ones((4, 136), dtype=np.float32))
     samples = discover_dvlog_samples(tmp_path)
     normalizer = FeatureNormalizer.fit([samples[0]])
     pooled = DVlogDataset(samples, normalizer, representation="pooled")
@@ -189,7 +194,9 @@ def test_collators_produce_expected_shapes(tmp_path: Path) -> None:
     assert pooled_batch["audio_embeddings"].shape == (2, 50)
     assert pooled_batch["visual_embeddings"].shape == (2, 272)
     assert temporal_batch["audio"].shape == (2, 3, 25)
-    assert temporal_batch["visual"].shape == (2, 3, 136)
+    assert temporal_batch["visual"].shape == (2, 4, 136)
+    assert temporal_batch["audio_lengths"].tolist() == [3, 3]
+    assert temporal_batch["visual_lengths"].tolist() == [4, 3]
     assert temporal_batch["visual_mask"].dtype == torch.bool
 
 
@@ -205,16 +212,19 @@ def test_bigru_forward_shape_and_padding_invariance(modality: str) -> None:
     torch.manual_seed(7)
     model = DVlogBiGRU(modality=modality, projection_dim=8, hidden_dim=6, dropout=0.0).eval()
     audio = torch.randn(2, 4, 25)
-    visual = torch.randn(2, 4, 136)
-    lengths = torch.tensor([4, 2])
-    visual_mask = torch.arange(4).unsqueeze(0) < lengths.unsqueeze(1)
+    visual = torch.randn(2, 5, 136)
+    audio_lengths = torch.tensor([4, 2])
+    visual_lengths = torch.tensor([5, 3])
+    visual_mask = torch.arange(5).unsqueeze(0) < visual_lengths.unsqueeze(1)
     padded_audio = torch.cat([audio, torch.zeros(2, 3, 25)], dim=1)
-    padded_visual = torch.cat([visual, torch.zeros(2, 3, 136)], dim=1)
-    padded_mask = torch.cat([visual_mask, torch.zeros(2, 3, dtype=torch.bool)], dim=1)
+    padded_visual = torch.cat([visual, torch.zeros(2, 2, 136)], dim=1)
+    padded_mask = torch.cat([visual_mask, torch.zeros(2, 2, dtype=torch.bool)], dim=1)
 
     with torch.no_grad():
-        logits = model(audio, visual, lengths, visual_mask)
-        padded_logits = model(padded_audio, padded_visual, lengths, padded_mask)
+        logits = model(audio, visual, audio_lengths, visual_lengths, visual_mask)
+        padded_logits = model(
+            padded_audio, padded_visual, audio_lengths, visual_lengths, padded_mask
+        )
 
     assert logits.shape == (2, 2)
     assert torch.allclose(logits, padded_logits, atol=1e-6)

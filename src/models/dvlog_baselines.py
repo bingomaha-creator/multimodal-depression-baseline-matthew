@@ -135,14 +135,15 @@ class DVlogBiGRU(nn.Module):
         self,
         audio: torch.Tensor,
         visual: torch.Tensor,
-        lengths: torch.Tensor,
+        audio_lengths: torch.Tensor,
+        visual_lengths: torch.Tensor,
         visual_mask: torch.Tensor,
     ) -> torch.Tensor:
-        time_index = torch.arange(audio.shape[1], device=lengths.device).unsqueeze(0)
-        audio_mask = time_index < lengths.unsqueeze(1)
+        time_index = torch.arange(audio.shape[1], device=audio_lengths.device).unsqueeze(0)
+        audio_mask = time_index < audio_lengths.unsqueeze(1)
         parts = []
         if self.audio_encoder is not None:
-            parts.append(self.audio_encoder(audio, lengths, audio_mask))
+            parts.append(self.audio_encoder(audio, audio_lengths, audio_mask))
         if self.visual_encoder is not None:
-            parts.append(self.visual_encoder(visual, lengths, visual_mask))
+            parts.append(self.visual_encoder(visual, visual_lengths, visual_mask))
         return self.classifier(torch.cat(parts, dim=-1))
