@@ -250,10 +250,12 @@ D-Vlog uses released, time-aligned features rather than raw media:
 ```text
 /home/rui/24zbma/data/D-vlog/
   labels.csv
-  0_acoustic.npy
-  0_visual.npy
-  1_acoustic.npy
-  1_visual.npy
+  0/
+    0_acoustic.npy
+    0_visual.npy
+  1/
+    1_acoustic.npy
+    1_visual.npy
   ...
 ```
 

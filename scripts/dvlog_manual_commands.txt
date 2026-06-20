@@ -6,17 +6,19 @@
 # Dataset directory expected by configs/baseline_dvlog.yaml:
 # /home/rui/24zbma/data/D-vlog/
 #   labels.csv
-#   0_acoustic.npy
-#   0_visual.npy
-#   1_acoustic.npy
-#   1_visual.npy
+#   0/
+#     0_acoustic.npy
+#     0_visual.npy
+#   1/
+#     1_acoustic.npy
+#     1_visual.npy
 #   ...
 #
 # labels.csv must contain: index,label,duration,gender,fold
 # Official fold values are: train, valid, test
 # Expected feature shapes are:
-#   {id}_acoustic.npy: (T, 25)
-#   {id}_visual.npy:   (T, 136)
+#   {id}/{id}_acoustic.npy: (T, 25)
+#   {id}/{id}_visual.npy:   (T, 136)
 #
 # No pretrained model download is required. These commands train the MLP and
 # BiGRU classifiers from scratch using the released D-Vlog features.

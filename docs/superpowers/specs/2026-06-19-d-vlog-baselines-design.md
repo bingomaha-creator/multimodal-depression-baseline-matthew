@@ -14,7 +14,7 @@ The server dataset root is `/home/rui/24zbma/data/D-vlog`.
 
 - `labels.csv` contains 961 rows with columns `index`, `label`, `duration`, `gender`, and `fold`.
 - Sample IDs are the integers 0 through 960.
-- Each sample has `{id}_acoustic.npy` with shape `(T, 25)` and `{id}_visual.npy` with shape `(T, 136)`.
+- Each sample has `{id}/{id}_acoustic.npy` with shape `(T, 25)` and `{id}/{id}_visual.npy` with shape `(T, 136)`.
 - The two modalities must have the same `T` for a sample. A mismatch is a data error, not something to silently crop.
 - Labels map `normal -> 0` and `depression -> 1`.
 - Official splits contain 647 train, 102 valid, and 212 test samples.

@@ -59,8 +59,8 @@ def discover_dvlog_samples(dataset_root: str | Path) -> list[DVlogSample]:
                 split=split,
                 gender=str(row.gender).strip().lower(),
                 duration=float(row.duration),
-                acoustic_path=root / f"{sample_id}_acoustic.npy",
-                visual_path=root / f"{sample_id}_visual.npy",
+                acoustic_path=root / sample_id / f"{sample_id}_acoustic.npy",
+                visual_path=root / sample_id / f"{sample_id}_visual.npy",
             )
         )
     return sorted(samples, key=lambda sample: int(sample.sample_id))

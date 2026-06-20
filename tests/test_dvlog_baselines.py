@@ -29,11 +29,13 @@ def write_dataset(root: Path, rows: list[dict], length: int = 4) -> None:
     pd.DataFrame(rows).to_csv(root / "labels.csv", index=False)
     for row in rows:
         sample_id = str(row["index"])
+        sample_dir = root / sample_id
+        sample_dir.mkdir(parents=True, exist_ok=True)
         base = float(int(sample_id) + 1)
         audio = np.full((length, 25), base, dtype=np.float32)
         visual = np.full((length, 136), base, dtype=np.float32)
-        np.save(root / f"{sample_id}_acoustic.npy", audio)
-        np.save(root / f"{sample_id}_visual.npy", visual)
+        np.save(sample_dir / f"{sample_id}_acoustic.npy", audio)
+        np.save(sample_dir / f"{sample_id}_visual.npy", visual)
 
 
 def basic_rows() -> list[dict]:
@@ -51,6 +53,8 @@ def test_discovery_sorts_numeric_ids_and_maps_labels(tmp_path: Path) -> None:
 
     assert [sample.sample_id for sample in samples] == ["0", "1", "2"]
     assert [sample.label for sample in samples] == [1, 0, 1]
+    assert samples[0].acoustic_path == tmp_path / "0" / "0_acoustic.npy"
+    assert samples[0].visual_path == tmp_path / "0" / "0_visual.npy"
 
 
 def test_validation_reports_split_and_class_counts(tmp_path: Path) -> None:
@@ -64,7 +68,7 @@ def test_validation_reports_split_and_class_counts(tmp_path: Path) -> None:
 
 def test_load_pair_rejects_length_mismatch(tmp_path: Path) -> None:
     write_dataset(tmp_path, basic_rows())
-    np.save(tmp_path / "0_visual.npy", np.ones((3, 136), dtype=np.float32))
+    np.save(tmp_path / "0" / "0_visual.npy", np.ones((3, 136), dtype=np.float32))
     sample = discover_dvlog_samples(tmp_path)[0]
 
     with pytest.raises(ValueError, match="length mismatch.*sample 0"):
@@ -75,7 +79,7 @@ def test_load_pair_rejects_non_finite_values(tmp_path: Path) -> None:
     write_dataset(tmp_path, basic_rows())
     audio = np.ones((4, 25), dtype=np.float32)
     audio[0, 0] = np.nan
-    np.save(tmp_path / "0_acoustic.npy", audio)
+    np.save(tmp_path / "0" / "0_acoustic.npy", audio)
     sample = discover_dvlog_samples(tmp_path)[0]
 
     with pytest.raises(ValueError, match="non-finite.*sample 0"):
@@ -86,7 +90,7 @@ def test_visual_zero_rows_are_masked(tmp_path: Path) -> None:
     write_dataset(tmp_path, basic_rows())
     visual = np.ones((4, 136), dtype=np.float32)
     visual[1] = 0.0
-    np.save(tmp_path / "0_visual.npy", visual)
+    np.save(tmp_path / "0" / "0_visual.npy", visual)
 
     _, _, mask = load_feature_pair(discover_dvlog_samples(tmp_path)[0])
 
@@ -108,7 +112,7 @@ def test_normalizer_restores_missing_visual_rows_to_zero(tmp_path: Path) -> None
     write_dataset(tmp_path, basic_rows())
     visual = np.full((4, 136), 2.0, dtype=np.float32)
     visual[1] = 0.0
-    np.save(tmp_path / "0_visual.npy", visual)
+    np.save(tmp_path / "0" / "0_visual.npy", visual)
     sample = discover_dvlog_samples(tmp_path)[0]
     _, raw_visual, mask = load_feature_pair(sample)
     normalizer = FeatureNormalizer.fit([sample])
