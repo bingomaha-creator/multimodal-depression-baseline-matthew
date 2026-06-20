@@ -128,7 +128,7 @@ python -m src.train_lmvd_ml_cv \
 # 11. DepMamba public 8:1:1 fixed split
 # The split CSV must contain: index,label,fold, where fold is train/valid/test.
 # Current server location:
-#   /home/rui/24zbma/LMVD/lmvd_labels.csv
+#   /home/rui/24zbma/data/LMVD/lmvd_labels.csv
 # These commands do not overwrite the previous 10-fold results.
 
 # 11.1 Recommended first run: RBF-SVM with video + audio
@@ -136,13 +136,13 @@ python -m src.train_lmvd_ml_cv \
   --config configs/baseline_lmvd.yaml \
   --models svm \
   --modality both \
-  --split-file /home/rui/24zbma/LMVD/lmvd_labels.csv
+  --split-file /home/rui/24zbma/data/LMVD/lmvd_labels.csv
 
 
 # 11.2 All traditional models and all modalities on the same fixed split
 python -m src.train_lmvd_ml_cv \
   --config configs/baseline_lmvd.yaml \
-  --split-file /home/rui/24zbma/LMVD/lmvd_labels.csv
+  --split-file /home/rui/24zbma/data/LMVD/lmvd_labels.csv
 
 
 # 11.3 MLP smoke test on the fixed split
@@ -150,7 +150,7 @@ python -m src.train_lmvd_ml_cv \
 python -m src.train_lmvd_cv \
   --config configs/baseline_lmvd.yaml \
   --modality both \
-  --split-file /home/rui/24zbma/LMVD/lmvd_labels.csv \
+  --split-file /home/rui/24zbma/data/LMVD/lmvd_labels.csv \
   --max-train-steps 1 \
   --output-dir runs/LMVD/fixed_split/mlp_smoke
 
@@ -159,17 +159,17 @@ python -m src.train_lmvd_cv \
 python -m src.train_lmvd_cv \
   --config configs/baseline_lmvd.yaml \
   --modality video \
-  --split-file /home/rui/24zbma/LMVD/lmvd_labels.csv
+  --split-file /home/rui/24zbma/data/LMVD/lmvd_labels.csv
 
 python -m src.train_lmvd_cv \
   --config configs/baseline_lmvd.yaml \
   --modality audio \
-  --split-file /home/rui/24zbma/LMVD/lmvd_labels.csv
+  --split-file /home/rui/24zbma/data/LMVD/lmvd_labels.csv
 
 python -m src.train_lmvd_cv \
   --config configs/baseline_lmvd.yaml \
   --modality both \
-  --split-file /home/rui/24zbma/LMVD/lmvd_labels.csv
+  --split-file /home/rui/24zbma/data/LMVD/lmvd_labels.csv
 
 
 # Fixed-split output summaries:
